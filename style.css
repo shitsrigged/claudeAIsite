@@ -58,7 +58,6 @@ nav a:hover {
     position: absolute;
     cursor: grab;
     user-select: none;
-    touch-action: none;
 }
 
 .gif-item:active {
@@ -91,6 +90,7 @@ nav a:hover {
     white-space: nowrap;
     background-color: white;
     border-top: 1px solid black;
+    position: relative;
 }
 
 .contact-scroll {
@@ -115,6 +115,7 @@ nav a:hover {
     display: flex;
     width: fit-content;
     animation: scroll 20s linear infinite;
+    will-change: transform;
 }
 
 .scroll-content {
@@ -175,6 +176,7 @@ nav a:hover {
     #gif-container {
         overflow-y: auto;
         height: calc(100vh - 180px);
+        -webkit-overflow-scrolling: touch;
     }
 
     .contact-link {
@@ -183,5 +185,14 @@ nav a:hover {
 
     .scroll-content img {
         height: 30px;
+    }
+
+    .bottom-sections {
+        -webkit-transform: translateZ(0);
+        transform: translateZ(0);
+    }
+
+    .scroll-track {
+        -webkit-animation: scroll 20s linear infinite;
     }
 }
