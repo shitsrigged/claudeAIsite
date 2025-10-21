@@ -115,7 +115,10 @@ nav a:hover {
     display: flex;
     width: fit-content;
     animation: scroll 20s linear infinite;
+    -webkit-animation: scroll 20s linear infinite;
     will-change: transform;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
 }
 
 .scroll-content {
@@ -149,6 +152,17 @@ nav a:hover {
         transform: translateX(0);
     }
     100% {
+        transform: translateX(-50%);
+    }
+}
+
+@-webkit-keyframes scroll {
+    0% {
+        -webkit-transform: translateX(0);
+        transform: translateX(0);
+    }
+    100% {
+        -webkit-transform: translateX(-50%);
         transform: translateX(-50%);
     }
 }
@@ -187,12 +201,12 @@ nav a:hover {
         height: 30px;
     }
 
-    .bottom-sections {
-        -webkit-transform: translateZ(0);
-        transform: translateZ(0);
+    .scroll-section {
+        overflow-x: hidden;
     }
 
     .scroll-track {
+        animation: scroll 20s linear infinite;
         -webkit-animation: scroll 20s linear infinite;
     }
 }
