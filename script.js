@@ -8,14 +8,17 @@ const gifs = [
 ];
 
 function getRandomSize() {
-    const sizes = [150, 200, 250, 300, 350];
+    const isMobile = window.innerWidth <= 768;
+    const sizes = isMobile ? [100, 120, 150, 180] : [150, 200, 250, 300, 350];
     return sizes[Math.floor(Math.random() * sizes.length)];
 }
 
 function getRandomPosition() {
-    const padding = 50;
-    const x = Math.random() * (window.innerWidth - 400) + padding;
-    const y = Math.random() * (window.innerHeight - 400) + padding;
+    const isMobile = window.innerWidth <= 768;
+    const padding = isMobile ? 10 : 50;
+    const maxSize = isMobile ? 200 : 400;
+    const x = Math.random() * (window.innerWidth - maxSize) + padding;
+    const y = Math.random() * (window.innerHeight - maxSize) + padding;
     return { x, y };
 }
 
