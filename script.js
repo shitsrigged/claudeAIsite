@@ -45,6 +45,75 @@ function createGif(gifUrl, container) {
 
     gifDiv.appendChild(img);
     container.appendChild(gifDiv);
+
+    // Make draggable
+    makeDraggable(gifDiv);
+}
+
+// Drag functionality
+function makeDraggable(element) {
+    let isDragging = false;
+    let currentX;
+    let currentY;
+    let initialX;
+    let initialY;
+    let xOffset = 0;
+    let yOffset = 0;
+
+    element.addEventListener('mousedown', dragStart);
+    element.addEventListener('touchstart', dragStart);
+
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('touchmove', drag);
+
+    document.addEventListener('mouseup', dragEnd);
+    document.addEventListener('touchend', dragEnd);
+
+    function dragStart(e) {
+        if (e.type === 'touchstart') {
+            initialX = e.touches[0].clientX - xOffset;
+            initialY = e.touches[0].clientY - yOffset;
+        } else {
+            initialX = e.clientX - xOffset;
+            initialY = e.clientY - yOffset;
+        }
+
+        if (e.target === element || element.contains(e.target)) {
+            isDragging = true;
+            element.style.zIndex = 100;
+        }
+    }
+
+    function drag(e) {
+        if (isDragging) {
+            e.preventDefault();
+
+            if (e.type === 'touchmove') {
+                currentX = e.touches[0].clientX - initialX;
+                currentY = e.touches[0].clientY - initialY;
+            } else {
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+            }
+
+            xOffset = currentX;
+            yOffset = currentY;
+
+            const currentLeft = parseFloat(element.style.left) || 0;
+            const currentTop = parseFloat(element.style.top) || 0;
+
+            element.style.left = (currentLeft + currentX - (xOffset - currentX)) + 'px';
+            element.style.top = (currentTop + currentY - (yOffset - currentY)) + 'px';
+        }
+    }
+
+    function dragEnd(e) {
+        if (isDragging) {
+            initialX = currentX;
+            initialY = currentY;
+            isDragging = false;
+        }
+    }
 }
 
 function initializeGifs() {

@@ -56,11 +56,16 @@ nav a:hover {
 
 .gif-item {
     position: absolute;
-    transition: transform 0.3s;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+}
+
+.gif-item:active {
+    cursor: grabbing;
 }
 
 .gif-item:hover {
-    transform: scale(1.05);
     z-index: 10;
 }
 
