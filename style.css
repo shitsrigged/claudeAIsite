@@ -51,7 +51,7 @@ nav a:hover {
 #gif-container {
     position: relative;
     width: 100vw;
-    height: 100vh;
+    height: calc(100vh - 180px);
 }
 
 .gif-item {
@@ -76,6 +76,82 @@ nav a:hover {
     object-fit: cover;
 }
 
+/* Bottom scrolling sections */
+.bottom-sections {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    z-index: 500;
+}
+
+.scroll-section {
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    background-color: white;
+    border-top: 1px solid black;
+}
+
+.contact-scroll {
+    height: 60px;
+    display: flex;
+    align-items: center;
+}
+
+.awards-scroll {
+    height: 60px;
+    display: flex;
+    align-items: center;
+}
+
+.logos-scroll {
+    height: 60px;
+    display: flex;
+    align-items: center;
+}
+
+.scroll-track {
+    display: flex;
+    width: fit-content;
+    animation: scroll 20s linear infinite;
+}
+
+.scroll-content {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    padding-right: 40px;
+}
+
+.contact-link {
+    color: black;
+    text-decoration: none;
+    font-size: 18px;
+    font-weight: bold;
+    padding: 0 20px;
+    transition: opacity 0.3s;
+}
+
+.contact-link:hover {
+    opacity: 0.6;
+}
+
+.scroll-content img {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
+}
+
+@keyframes scroll {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
 /* Mobile optimization */
 @media (max-width: 768px) {
     nav {
@@ -98,5 +174,14 @@ nav a:hover {
 
     #gif-container {
         overflow-y: auto;
+        height: calc(100vh - 180px);
+    }
+
+    .contact-link {
+        font-size: 14px;
+    }
+
+    .scroll-content img {
+        height: 30px;
     }
 }

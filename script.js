@@ -7,6 +7,28 @@ const gifs = [
     'gifs/google_AdobeExpress.gif'
 ];
 
+// Client logos
+const clientLogos = [
+    'client logos/adobe_logo.png',
+    'client logos/amazon_logo.png',
+    'client logos/apple_logo.png',
+    'client logos/atlassian_logo.png',
+    'client logos/google_logo.png',
+    'client logos/intel_logo.png',
+    'client logos/meta_logo.png',
+    'client logos/nvidia_logo.png',
+    'client logos/samsung_logo.png',
+    'client logos/tesla_logo.png'
+];
+
+// Awards
+const awards = [
+    'awards/cannes_lion_logo.png',
+    'awards/emmy_logo.png',
+    'awards/oscar_logo.png',
+    'awards/trophy_logo.png'
+];
+
 function getRandomSize() {
     const isMobile = window.innerWidth <= 768;
     const sizes = isMobile ? [100, 120, 150, 180] : [150, 200, 250, 300, 350];
@@ -160,10 +182,52 @@ function hideAllInfoBoxes() {
     });
 }
 
+// Load scrolling sections
+function loadScrollingSections() {
+    // Load client logos - repeat multiple times to ensure smooth scrolling
+    const logosContent = document.getElementById('logos-content');
+    const logosDuplicate = document.getElementById('logos-content-duplicate');
+
+    // Repeat logos 3 times in each section for smooth scrolling
+    for (let i = 0; i < 3; i++) {
+        clientLogos.forEach(logo => {
+            const img = document.createElement('img');
+            img.src = logo;
+            img.alt = 'Client logo';
+            logosContent.appendChild(img);
+
+            const imgDup = document.createElement('img');
+            imgDup.src = logo;
+            imgDup.alt = 'Client logo';
+            logosDuplicate.appendChild(imgDup);
+        });
+    }
+
+    // Load awards - repeat multiple times for smooth scrolling
+    const awardsContent = document.getElementById('awards-content');
+    const awardsDuplicate = document.getElementById('awards-content-duplicate');
+
+    // Repeat awards 5 times in each section for smooth scrolling
+    for (let i = 0; i < 5; i++) {
+        awards.forEach(award => {
+            const img = document.createElement('img');
+            img.src = award;
+            img.alt = 'Award';
+            awardsContent.appendChild(img);
+
+            const imgDup = document.createElement('img');
+            imgDup.src = award;
+            imgDup.alt = 'Award';
+            awardsDuplicate.appendChild(imgDup);
+        });
+    }
+}
+
 // Initialize when page loads
 window.addEventListener('load', () => {
     initializeGifs();
     setupNavigation();
+    loadScrollingSections();
 });
 
 // Optionally refresh positions on window resize

@@ -9,7 +9,6 @@
 <body>
     <nav>
         <a href="#about" data-info="about">About</a>
-        <a href="#contact" data-info="contact">Contact</a>
         <a href="#specs" data-info="specs">Specs</a>
     </nav>
 
@@ -18,18 +17,49 @@
         <p>Add your about information here.</p>
     </div>
 
-    <div id="info-box-contact" class="info-box">
-        <h2>Contact</h2>
-        <p>Email: your@email.com</p>
-        <p>Add your contact details here.</p>
-    </div>
-
     <div id="info-box-specs" class="info-box">
         <h2>Specs</h2>
         <p>Add your technical specifications here.</p>
     </div>
 
     <div id="gif-container"></div>
+
+    <div class="bottom-sections">
+        <div class="scroll-section contact-scroll">
+            <div class="scroll-track">
+                <div class="scroll-content">
+                    <a href="tel:323.545.7269" class="contact-link">323.545.7269</a>
+                    <a href="mailto:CONTACT@COMPANY.COM" class="contact-link">CONTACT@COMPANY.COM</a>
+                    <a href="tel:323.545.7269" class="contact-link">323.545.7269</a>
+                    <a href="mailto:CONTACT@COMPANY.COM" class="contact-link">CONTACT@COMPANY.COM</a>
+                    <a href="tel:323.545.7269" class="contact-link">323.545.7269</a>
+                    <a href="mailto:CONTACT@COMPANY.COM" class="contact-link">CONTACT@COMPANY.COM</a>
+                </div>
+                <div class="scroll-content" aria-hidden="true">
+                    <a href="tel:323.545.7269" class="contact-link">323.545.7269</a>
+                    <a href="mailto:CONTACT@COMPANY.COM" class="contact-link">CONTACT@COMPANY.COM</a>
+                    <a href="tel:323.545.7269" class="contact-link">323.545.7269</a>
+                    <a href="mailto:CONTACT@COMPANY.COM" class="contact-link">CONTACT@COMPANY.COM</a>
+                    <a href="tel:323.545.7269" class="contact-link">323.545.7269</a>
+                    <a href="mailto:CONTACT@COMPANY.COM" class="contact-link">CONTACT@COMPANY.COM</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="scroll-section awards-scroll">
+            <div class="scroll-track">
+                <div class="scroll-content" id="awards-content"></div>
+                <div class="scroll-content" id="awards-content-duplicate" aria-hidden="true"></div>
+            </div>
+        </div>
+
+        <div class="scroll-section logos-scroll">
+            <div class="scroll-track">
+                <div class="scroll-content" id="logos-content"></div>
+                <div class="scroll-content" id="logos-content-duplicate" aria-hidden="true"></div>
+            </div>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
