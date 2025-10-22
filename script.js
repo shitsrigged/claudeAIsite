@@ -1,11 +1,57 @@
-// Array of gif URLs from your gifs folder
-const gifs = [
-    'gifs/1_1_Final_gold_shrine_video_3k0001-0300_AdobeExpress.gif',
-    'gifs/doja_AdobeExpress.gif',
-    'gifs/french_AdobeExpress.gif',
-    'gifs/Gold_Love_Potion_video__in_3k0001-0300_AdobeExpress.gif',
-    'gifs/google_AdobeExpress.gif'
+// Google Sheets URL - Replace with your published sheet URL
+const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfknahyT_elgMF_uoR--PmOmFjjAf_JDcJzjg9ygFjhsAi6CjAGDr1zLAJ6QKWTRwZVLE1yctGqrsr/pub?output=csv';
+
+// Fallback gif database (used if Google Sheets fails to load)
+const fallbackGifs = [
+    {
+        url: 'gifs/1_1_Final_gold_shrine_video_3k0001-0300_AdobeExpress.gif',
+        name: 'Gold Shrine',
+        link: 'https://youtube.com/watch?v=EXAMPLE1',
+        directedBy: '',
+        producedBy: '',
+        client: '',
+        year: '2024'
+    },
+    {
+        url: 'gifs/doja_AdobeExpress.gif',
+        name: 'Doja Project',
+        link: '',
+        directedBy: 'Director Name',
+        producedBy: '',
+        client: 'Client Name',
+        year: ''
+    },
+    {
+        url: 'gifs/french_AdobeExpress.gif',
+        name: 'French',
+        link: 'https://youtube.com/watch?v=EXAMPLE3',
+        directedBy: '',
+        producedBy: 'Producer Name',
+        client: '',
+        year: '2024'
+    },
+    {
+        url: 'gifs/Gold_Love_Potion_video__in_3k0001-0300_AdobeExpress.gif',
+        name: 'Gold Love Potion',
+        link: '',
+        directedBy: '',
+        producedBy: '',
+        client: '',
+        year: ''
+    },
+    {
+        url: 'gifs/google_AdobeExpress.gif',
+        name: 'Google',
+        link: 'https://youtube.com/watch?v=EXAMPLE5',
+        directedBy: 'Director Name',
+        producedBy: 'Producer Name',
+        client: 'Client Name',
+        year: '2024'
+    }
 ];
+
+// Global variable to store loaded gifs
+let gifs = [];
 
 // Client logos
 const clientLogos = [
@@ -48,7 +94,7 @@ function getRandomZIndex() {
     return Math.floor(Math.random() * 20) + 1;
 }
 
-function createGif(gifUrl, container) {
+function createGif(gifData, container) {
     const size = getRandomSize();
     const position = getRandomPosition();
     const zIndex = getRandomZIndex();
@@ -62,19 +108,98 @@ function createGif(gifUrl, container) {
     gifDiv.style.zIndex = zIndex;
 
     const img = document.createElement('img');
-    img.src = gifUrl;
-    img.alt = 'Portfolio work';
+    img.src = gifData.url;
+    img.alt = gifData.name;
+
+    // Create info box that appears next to the gif
+    const infoBox = document.createElement('div');
+    infoBox.className = 'gif-info-box';
+
+    let infoHTML = '';
+
+    // Debug: log the data to see what we're getting
+    console.log('Gif Data:', gifData);
+
+    if (gifData.name && gifData.name.trim() !== '') {
+        console.log('Adding name:', gifData.name);
+        infoHTML += `<h3>${gifData.name}</h3>`;
+    }
+
+    if (gifData.directedBy && gifData.directedBy.trim() !== '') {
+        console.log('Adding directedBy:', gifData.directedBy);
+        infoHTML += `<p><strong>Directed by:</strong> ${gifData.directedBy}</p>`;
+    }
+
+    if (gifData.producedBy && gifData.producedBy.trim() !== '') {
+        console.log('Adding producedBy:', gifData.producedBy);
+        infoHTML += `<p><strong>Produced by:</strong> ${gifData.producedBy}</p>`;
+    }
+
+    if (gifData.client && gifData.client.trim() !== '') {
+        console.log('Adding client:', gifData.client);
+        infoHTML += `<p><strong>Client:</strong> ${gifData.client}</p>`;
+    }
+
+    if (gifData.year && gifData.year.trim() !== '') {
+        console.log('Adding year:', gifData.year);
+        infoHTML += `<p><strong>Year:</strong> ${gifData.year}</p>`;
+    }
+
+    if (gifData.link && gifData.link.trim() !== '') {
+        console.log('Adding link:', gifData.link);
+        infoHTML += `<a href="${gifData.link}" target="_blank" class="view-link">View Project →</a>`;
+    }
+
+    infoBox.innerHTML = infoHTML;
 
     gifDiv.appendChild(img);
+    gifDiv.appendChild(infoBox);
     container.appendChild(gifDiv);
 
-    // Make draggable
-    makeDraggable(gifDiv);
+    let hideTimeout = null;
+    let isPinned = false;
+
+    // Show info box on hover
+    gifDiv.addEventListener('mouseenter', () => {
+        if (hideTimeout) {
+            clearTimeout(hideTimeout);
+        }
+        infoBox.classList.add('active');
+    });
+
+    gifDiv.addEventListener('mouseleave', () => {
+        if (!isPinned) {
+            hideTimeout = setTimeout(() => {
+                infoBox.classList.add('dither-fade');
+                setTimeout(() => {
+                    infoBox.classList.remove('active');
+                    infoBox.classList.remove('dither-fade');
+                }, 500);
+            }, 3000);
+        }
+    });
+
+    // Click to pin/unpin the info box
+    gifDiv.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (hideTimeout) {
+            clearTimeout(hideTimeout);
+        }
+
+        if (isPinned) {
+            isPinned = false;
+            infoBox.classList.remove('active');
+        } else {
+            isPinned = true;
+            infoBox.classList.add('active');
+        }
+    });
 }
 
 // Drag functionality
 function makeDraggable(element) {
     let isDragging = false;
+    let wasDragging = false;
     let currentX;
     let currentY;
     let initialX;
@@ -102,6 +227,7 @@ function makeDraggable(element) {
 
         if (e.target === element || element.contains(e.target)) {
             isDragging = true;
+            wasDragging = false;
             element.style.zIndex = 100;
         }
     }
@@ -109,6 +235,7 @@ function makeDraggable(element) {
     function drag(e) {
         if (isDragging) {
             e.preventDefault();
+            wasDragging = true;
 
             if (e.type === 'touchmove') {
                 currentX = e.touches[0].clientX - initialX;
@@ -134,7 +261,42 @@ function makeDraggable(element) {
             initialX = currentX;
             initialY = currentY;
             isDragging = false;
+
+            // Reset wasDragging after a short delay to allow click handler to check it
+            setTimeout(() => {
+                wasDragging = false;
+            }, 10);
         }
+    }
+
+    return { get wasDragging() { return wasDragging; } };
+}
+
+// Fetch gif data from Google Sheets
+async function loadGifData() {
+    try {
+        const response = await fetch(GOOGLE_SHEET_URL);
+        const text = await response.text();
+
+        // Parse CSV data
+        const rows = text.split('\n').slice(1); // Skip header row
+        gifs = rows.filter(row => row.trim()).map(row => {
+            const [url, name, link, directedBy, producedBy, client, year] = row.split(',').map(cell => cell.trim());
+            return {
+                url: url || '',
+                name: name || '',
+                link: link || '',
+                directedBy: directedBy || '',
+                producedBy: producedBy || '',
+                client: client || '',
+                year: year || ''
+            };
+        });
+
+        console.log('Loaded gifs from Google Sheets:', gifs);
+    } catch (error) {
+        console.warn('Failed to load from Google Sheets, using fallback data:', error);
+        gifs = fallbackGifs;
     }
 }
 
@@ -224,7 +386,8 @@ function loadScrollingSections() {
 }
 
 // Initialize when page loads
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
+    await loadGifData();
     initializeGifs();
     setupNavigation();
     loadScrollingSections();
