@@ -166,7 +166,7 @@ function createGif(gifData, container) {
                     infoBox.classList.remove('active');
                     infoBox.classList.remove('dither-fade');
                 }, 500);
-            }, 3000);
+            }, 1000);
         }
     });
 
