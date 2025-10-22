@@ -322,7 +322,7 @@ function animateLogo(logoElement, size) {
     const speed = 0.5;
 
     function animate() {
-        const containerHeight = window.innerHeight - 180; // Account for bottom sections
+        const containerHeight = window.innerHeight - 120; // Account for bottom sections
         const containerWidth = window.innerWidth;
 
         x += dx * speed;
@@ -362,6 +362,7 @@ function initializeGifs() {
 // Navigation info box functionality
 function setupNavigation() {
     const navLinks = document.querySelectorAll('nav a');
+    const infoBoxTimers = new Map();
 
     navLinks.forEach(link => {
         const infoType = link.getAttribute('data-info');
@@ -371,6 +372,8 @@ function setupNavigation() {
         link.addEventListener('mouseenter', () => {
             hideAllInfoBoxes();
             infoBox.classList.add('active');
+            infoBox.classList.remove('dither-fade');
+            startAutoClose(infoBox, infoBoxTimers);
         });
 
         // Also show on click
@@ -378,6 +381,19 @@ function setupNavigation() {
             e.preventDefault();
             hideAllInfoBoxes();
             infoBox.classList.add('active');
+            infoBox.classList.remove('dither-fade');
+            startAutoClose(infoBox, infoBoxTimers);
+        });
+    });
+
+    // Close button functionality
+    document.querySelectorAll('.close-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const infoBox = btn.closest('.info-box');
+            clearTimeout(infoBoxTimers.get(infoBox));
+            infoBox.classList.remove('active');
+            infoBox.classList.remove('dither-fade');
         });
     });
 
@@ -389,9 +405,28 @@ function setupNavigation() {
     });
 }
 
+function startAutoClose(infoBox, timersMap) {
+    // Clear existing timer if any
+    if (timersMap.has(infoBox)) {
+        clearTimeout(timersMap.get(infoBox));
+    }
+
+    // Start 7 second timer
+    const timer = setTimeout(() => {
+        infoBox.classList.add('dither-fade');
+        setTimeout(() => {
+            infoBox.classList.remove('active');
+            infoBox.classList.remove('dither-fade');
+        }, 500);
+    }, 7000);
+
+    timersMap.set(infoBox, timer);
+}
+
 function hideAllInfoBoxes() {
     document.querySelectorAll('.info-box').forEach(box => {
         box.classList.remove('active');
+        box.classList.remove('dither-fade');
     });
 }
 
@@ -436,12 +471,41 @@ function loadScrollingSections() {
     }
 }
 
+// Random color on hover/tap for scroll sections
+function setupScrollSectionHovers() {
+    const scrollSections = document.querySelectorAll('.scroll-section');
+
+    scrollSections.forEach(section => {
+        // Desktop: hover
+        section.addEventListener('mouseenter', () => {
+            const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+            section.style.backgroundColor = randomColor;
+        });
+
+        section.addEventListener('mouseleave', () => {
+            section.style.backgroundColor = 'white';
+        });
+
+        // Mobile: tap to change color
+        section.addEventListener('touchstart', (e) => {
+            const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+            section.style.backgroundColor = randomColor;
+
+            // Reset to white after 2 seconds
+            setTimeout(() => {
+                section.style.backgroundColor = 'white';
+            }, 2000);
+        });
+    });
+}
+
 // Initialize when page loads
 window.addEventListener('load', async () => {
     await loadGifData();
     initializeGifs();
     setupNavigation();
     loadScrollingSections();
+    setupScrollSectionHovers();
 });
 
 // Optionally refresh positions on window resize
