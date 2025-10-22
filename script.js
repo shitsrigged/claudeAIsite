@@ -320,12 +320,27 @@ function createLogo(container) {
     animateLogo(logoDiv, size);
 }
 
-function animateLogo(logoElement, size) {
+function animateLogo(logoElement, initialSize) {
     let x = parseFloat(logoElement.style.left);
     let y = parseFloat(logoElement.style.top);
     let dx = (Math.random() - 0.5) * 2; // Random X velocity
     let dy = (Math.random() - 0.5) * 2; // Random Y velocity
+    let size = initialSize;
     const speed = 0.5;
+
+    // Array of random CSS filter effects
+    const effects = [
+        'none',
+        'invert(1)',
+        'hue-rotate(90deg)',
+        'hue-rotate(180deg)',
+        'hue-rotate(270deg)',
+        'saturate(3)',
+        'contrast(2)',
+        'brightness(1.5)',
+        'sepia(1)',
+        'grayscale(1)'
+    ];
 
     function animate() {
         const containerHeight = window.innerHeight - 120; // Account for bottom sections
@@ -334,15 +349,35 @@ function animateLogo(logoElement, size) {
         x += dx * speed;
         y += dy * speed;
 
-        // Bounce off edges with highly random direction
+        // Bounce off edges with highly random direction, size, and effect
         if (x <= 0 || x >= containerWidth - size) {
             dx = (Math.random() * 6) - 3; // Random between -3 and 3
             x = Math.max(0, Math.min(x, containerWidth - size));
+
+            // Change size randomly
+            const sizes = [150, 200, 250, 300, 350];
+            size = sizes[Math.floor(Math.random() * sizes.length)];
+            logoElement.style.width = size + 'px';
+            logoElement.style.height = size + 'px';
+
+            // Apply random visual effect
+            const randomEffect = effects[Math.floor(Math.random() * effects.length)];
+            logoElement.querySelector('img').style.filter = randomEffect;
         }
 
         if (y <= 0 || y >= containerHeight - size) {
             dy = (Math.random() * 6) - 3; // Random between -3 and 3
             y = Math.max(0, Math.min(y, containerHeight - size));
+
+            // Change size randomly
+            const sizes = [150, 200, 250, 300, 350];
+            size = sizes[Math.floor(Math.random() * sizes.length)];
+            logoElement.style.width = size + 'px';
+            logoElement.style.height = size + 'px';
+
+            // Apply random visual effect
+            const randomEffect = effects[Math.floor(Math.random() * effects.length)];
+            logoElement.querySelector('img').style.filter = randomEffect;
         }
 
         logoElement.style.left = x + 'px';
