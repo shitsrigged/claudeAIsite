@@ -117,36 +117,27 @@ function createGif(gifData, container) {
 
     let infoHTML = '';
 
-    // Debug: log the data to see what we're getting
-    console.log('Gif Data:', gifData);
-
     if (gifData.name && gifData.name.trim() !== '') {
-        console.log('Adding name:', gifData.name);
         infoHTML += `<h3>${gifData.name}</h3>`;
     }
 
     if (gifData.directedBy && gifData.directedBy.trim() !== '') {
-        console.log('Adding directedBy:', gifData.directedBy);
         infoHTML += `<p><strong>Directed by:</strong> ${gifData.directedBy}</p>`;
     }
 
     if (gifData.producedBy && gifData.producedBy.trim() !== '') {
-        console.log('Adding producedBy:', gifData.producedBy);
         infoHTML += `<p><strong>Produced by:</strong> ${gifData.producedBy}</p>`;
     }
 
     if (gifData.client && gifData.client.trim() !== '') {
-        console.log('Adding client:', gifData.client);
         infoHTML += `<p><strong>Client:</strong> ${gifData.client}</p>`;
     }
 
     if (gifData.year && gifData.year.trim() !== '') {
-        console.log('Adding year:', gifData.year);
         infoHTML += `<p><strong>Year:</strong> ${gifData.year}</p>`;
     }
 
     if (gifData.link && gifData.link.trim() !== '') {
-        console.log('Adding link:', gifData.link);
         infoHTML += `<a href="${gifData.link}" target="_blank" class="view-link">View Project →</a>`;
     }
 
@@ -300,12 +291,72 @@ async function loadGifData() {
     }
 }
 
+function createLogo(container) {
+    const size = getRandomSize();
+    const position = getRandomPosition();
+
+    const logoDiv = document.createElement('div');
+    logoDiv.className = 'gif-item logo-item';
+    logoDiv.style.left = position.x + 'px';
+    logoDiv.style.top = position.y + 'px';
+    logoDiv.style.width = size + 'px';
+    logoDiv.style.height = size + 'px';
+    logoDiv.style.zIndex = 9999; // Always on top
+
+    const img = document.createElement('img');
+    img.src = 'gp logo 2.png';
+    img.alt = 'Gentle People Logo';
+
+    logoDiv.appendChild(img);
+    container.appendChild(logoDiv);
+
+    // Animate the logo
+    animateLogo(logoDiv, size);
+}
+
+function animateLogo(logoElement, size) {
+    let x = parseFloat(logoElement.style.left);
+    let y = parseFloat(logoElement.style.top);
+    let dx = (Math.random() - 0.5) * 2; // Random X velocity
+    let dy = (Math.random() - 0.5) * 2; // Random Y velocity
+    const speed = 0.5;
+
+    function animate() {
+        const containerHeight = window.innerHeight - 180; // Account for bottom sections
+        const containerWidth = window.innerWidth;
+
+        x += dx * speed;
+        y += dy * speed;
+
+        // Bounce off edges with highly random direction
+        if (x <= 0 || x >= containerWidth - size) {
+            dx = (Math.random() * 6) - 3; // Random between -3 and 3
+            x = Math.max(0, Math.min(x, containerWidth - size));
+        }
+
+        if (y <= 0 || y >= containerHeight - size) {
+            dy = (Math.random() * 6) - 3; // Random between -3 and 3
+            y = Math.max(0, Math.min(y, containerHeight - size));
+        }
+
+        logoElement.style.left = x + 'px';
+        logoElement.style.top = y + 'px';
+
+        requestAnimationFrame(animate);
+    }
+
+    animate();
+}
+
 function initializeGifs() {
     const container = document.getElementById('gif-container');
 
     gifs.forEach(gif => {
         createGif(gif, container);
     });
+
+    // Add the GP logo
+    createLogo(container);
 }
 
 // Navigation info box functionality
