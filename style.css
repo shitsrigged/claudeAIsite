@@ -2,13 +2,14 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    cursor: url('cat-tail-64x64.png') 32 32, auto;
 }
 
 body {
     background-color: white;
     font-family: 'Courier New', Courier, monospace;
     overflow-x: hidden;
-    cursor: url('1.webp'), auto;
+    cursor: url('cat-tail-64x64.png') 32 32, auto;
     color: #00ff00;
 }
 
@@ -27,6 +28,8 @@ nav a {
     font-size: 14px;
     transition: opacity 0.3s;
     position: relative;
+    font-weight: bold;
+    text-transform: uppercase;
 }
 
 nav a:hover {
@@ -37,7 +40,7 @@ nav a:hover {
     position: fixed;
     background-color: white;
     border: 1px solid black;
-    padding: 20px;
+    padding: 5px 10px;
     max-width: 400px;
     display: none;
     z-index: 999;
@@ -76,7 +79,8 @@ nav a:hover {
 #gif-container {
     position: relative;
     width: 100vw;
-    height: calc(100vh - 120px);
+    min-height: calc(100vh - 120px);
+    padding-bottom: 20px;
 }
 
 .gif-item {
@@ -193,6 +197,7 @@ nav a:hover {
     left: 0;
     width: 100vw;
     z-index: 500;
+    cursor: url('cat-tail-64x64.png') 32 32, auto;
 }
 
 .scroll-section {
@@ -203,6 +208,7 @@ nav a:hover {
     border-top: 1px solid black;
     position: relative;
     transition: background-color 0.3s ease;
+    cursor: url('cat-tail-64x64.png') 32 32, auto;
 }
 
 .contact-scroll {
@@ -247,6 +253,7 @@ nav a:hover {
     font-weight: bold;
     padding: 0 20px;
     transition: opacity 0.3s;
+    cursor: url('cat-tail-64x64.png') 32 32, auto;
 }
 
 .contact-link:hover {
@@ -257,6 +264,7 @@ nav a:hover {
     height: 40px;
     width: auto;
     object-fit: contain;
+    cursor: url('cat-tail-64x64.png') 32 32, auto;
 }
 
 @keyframes scroll {

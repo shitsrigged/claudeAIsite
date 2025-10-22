@@ -85,8 +85,14 @@ function getRandomPosition() {
     const isMobile = window.innerWidth <= 768;
     const padding = isMobile ? 10 : 50;
     const maxSize = isMobile ? 200 : 400;
+
+    // Calculate total available height: at least 2 full screens worth
+    const baseHeight = window.innerHeight - 120; // Account for bottom sections
+    const totalHeight = baseHeight * 2; // Always allow 2 screens worth of scrolling
+
     const x = Math.random() * (window.innerWidth - maxSize) + padding;
-    const y = Math.random() * (window.innerHeight - maxSize) + padding;
+    // Ensure gif doesn't go below the available space by subtracting maxSize from totalHeight
+    const y = Math.random() * (totalHeight - maxSize);
     return { x, y };
 }
 
