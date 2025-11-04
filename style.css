@@ -149,7 +149,7 @@ nav a:hover {
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
-    pointer-events: none;
+    -webkit-user-drag: none;
 }
 
 .gif-info-box {
