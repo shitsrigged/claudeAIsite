@@ -216,13 +216,13 @@ function createGif(gifData, container) {
 
     // Click handler (desktop only - blocked after touch events)
     gifDiv.addEventListener('click', (e) => {
+        e.preventDefault();
         e.stopPropagation();
 
         // Ignore clicks that came right after touch events (ghost clicks)
         if (gifDiv._justTouched) {
-            console.log('Ignoring click after touch');
-            gifDiv._justTouched = false;
-            return;
+            console.log('Ignoring click after touch (ghost click blocked)');
+            return; // Don't reset the flag here - let the timeout handle it
         }
 
         console.log('Gif clicked, infoBox active?', infoBox.classList.contains('active'));
@@ -375,6 +375,9 @@ function makeDraggable(element) {
     element.addEventListener('touchend', (e) => {
         if (!isDragging) return;
 
+        e.preventDefault(); // Prevent ghost click
+        e.stopPropagation();
+
         console.log('Touch end, hasMoved:', hasMoved);
 
         isDragging = false;
@@ -385,18 +388,24 @@ function makeDraggable(element) {
         if (!hasMoved) {
             console.log('Tap detected, showing info box directly');
 
-            // Set flag to block ghost click event
+            // Set flag FIRST to block any ghost click event
             element._justTouched = true;
             setTimeout(() => {
                 element._justTouched = false;
-            }, 500);
+                console.log('Cleared _justTouched flag');
+            }, 800); // Longer timeout to catch all ghost clicks
 
-            // Toggle info box directly (no synthetic click)
-            if (element._infoBox && element._infoBox.classList.contains('active')) {
-                if (element._hideInfoBox) element._hideInfoBox();
-            } else {
-                if (element._showInfoBox) element._showInfoBox();
-            }
+            // Small delay to ensure flag is set before any ghost click
+            setTimeout(() => {
+                // Toggle info box directly (no synthetic click)
+                if (element._infoBox && element._infoBox.classList.contains('active')) {
+                    console.log('Hiding info box on tap');
+                    if (element._hideInfoBox) element._hideInfoBox();
+                } else {
+                    console.log('Showing info box on tap');
+                    if (element._showInfoBox) element._showInfoBox();
+                }
+            }, 0);
         }
     }, { passive: false });
 
