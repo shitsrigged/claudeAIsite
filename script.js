@@ -160,19 +160,39 @@ function createGif(gifData, container) {
     // Make the gif draggable
     makeDraggable(gifDiv);
 
-    let hideTimeout = null;
+    // Store reference to infoBox for timeout management
+    gifDiv._infoBox = infoBox;
+    gifDiv._hideTimeoutId = null;
+
+    function clearInfoBoxTimeout() {
+        if (gifDiv._hideTimeoutId) {
+            clearTimeout(gifDiv._hideTimeoutId);
+            gifDiv._hideTimeoutId = null;
+        }
+    }
+
+    function startInfoBoxFadeTimer() {
+        clearInfoBoxTimeout();
+        gifDiv._hideTimeoutId = setTimeout(() => {
+            infoBox.classList.add('dither-fade');
+            setTimeout(() => {
+                infoBox.classList.remove('active');
+                infoBox.classList.remove('dither-fade');
+            }, 500);
+        }, 3000);
+        console.log('Started fade timer');
+    }
 
     // Show info box on hover
     gifDiv.addEventListener('mouseenter', () => {
-        if (hideTimeout) {
-            clearTimeout(hideTimeout);
-        }
+        clearInfoBoxTimeout();
         infoBox.classList.add('active');
         infoBox.classList.remove('dither-fade');
     });
 
     gifDiv.addEventListener('mouseleave', () => {
-        hideTimeout = setTimeout(() => {
+        clearInfoBoxTimeout();
+        gifDiv._hideTimeoutId = setTimeout(() => {
             infoBox.classList.add('dither-fade');
             setTimeout(() => {
                 infoBox.classList.remove('active');
@@ -184,36 +204,25 @@ function createGif(gifData, container) {
     // Click/tap to toggle the info box
     gifDiv.addEventListener('click', (e) => {
         e.stopPropagation();
+        console.log('Gif clicked, infoBox active?', infoBox.classList.contains('active'));
 
-        if (hideTimeout) {
-            clearTimeout(hideTimeout);
-        }
+        clearInfoBoxTimeout();
 
         // Toggle: if active, hide it with fade; if not active, show it
         if (infoBox.classList.contains('active')) {
+            console.log('Hiding info box');
             infoBox.classList.add('dither-fade');
             setTimeout(() => {
                 infoBox.classList.remove('active');
                 infoBox.classList.remove('dither-fade');
             }, 500);
         } else {
+            console.log('Showing info box and starting timer');
             infoBox.classList.add('active');
             infoBox.classList.remove('dither-fade');
-
-            // Auto-hide after 3 seconds (longer for mobile to read)
-            hideTimeout = setTimeout(() => {
-                infoBox.classList.add('dither-fade');
-                setTimeout(() => {
-                    infoBox.classList.remove('active');
-                    infoBox.classList.remove('dither-fade');
-                }, 500);
-            }, 3000);
+            startInfoBoxFadeTimer();
         }
     });
-
-    // Store reference to hideTimeout so dragging can access it
-    gifDiv._hideTimeout = hideTimeout;
-    gifDiv._infoBox = infoBox;
 }
 
 // Drag functionality
@@ -232,29 +241,36 @@ function makeDraggable(element) {
         if (now - lastTrailTime < 30) return; // Throttle trail creation
         lastTrailTime = now;
 
-        const trail = element.cloneNode(true);
+        const trail = document.createElement('div');
         trail.className = 'drag-trail';
+        trail.style.position = 'absolute';
         trail.style.left = element.style.left;
         trail.style.top = element.style.top;
         trail.style.width = element.style.width;
         trail.style.height = element.style.height;
         trail.style.zIndex = 5;
 
-        // Apply rainbow effect
-        const img = trail.querySelector('img');
-        if (img) {
+        // Clone the image
+        const originalImg = element.querySelector('img');
+        if (originalImg) {
+            const img = originalImg.cloneNode(true);
             img.style.filter = `invert(1) sepia(1) saturate(5) hue-rotate(${hueRotation}deg)`;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'cover';
+            trail.appendChild(img);
         }
 
         hueRotation = (hueRotation + 30) % 360;
 
-        // Remove info box from trail
-        const infoBox = trail.querySelector('.gif-info-box');
-        if (infoBox) infoBox.remove();
-
         element.parentElement.appendChild(trail);
+        console.log('Created drag trail at', trail.style.left, trail.style.top, 'hue:', hueRotation);
 
-        setTimeout(() => trail.remove(), 600);
+        setTimeout(() => {
+            if (trail.parentElement) {
+                trail.remove();
+            }
+        }, 600);
     }
 
     // Mouse events
@@ -350,9 +366,13 @@ function makeDraggable(element) {
         element.classList.remove('dragging');
         element.style.zIndex = element.dataset.originalZIndex || getRandomZIndex();
 
-        // Quick tap = show info
+        // Quick tap = show info (only if we didn't drag)
         if (!hasMoved) {
-            element.click();
+            console.log('Tap detected, triggering click');
+            // Small delay to ensure touch events are complete
+            setTimeout(() => {
+                element.click();
+            }, 10);
         }
     }, { passive: false });
 
