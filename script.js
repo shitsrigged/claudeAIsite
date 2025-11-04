@@ -153,6 +153,10 @@ function createGif(gifData, container) {
     gifDiv.appendChild(infoBox);
     container.appendChild(gifDiv);
 
+    // Prevent iOS context menu (share/save/copy)
+    gifDiv.addEventListener('contextmenu', (e) => e.preventDefault());
+    img.addEventListener('contextmenu', (e) => e.preventDefault());
+
     // Make the gif draggable
     makeDraggable(gifDiv);
 
@@ -332,6 +336,10 @@ function createLogo(container) {
     const img = document.createElement('img');
     img.src = 'gp logo 2.png';
     img.alt = 'Gentle People Logo';
+
+    // Prevent iOS context menu
+    logoDiv.addEventListener('contextmenu', (e) => e.preventDefault());
+    img.addEventListener('contextmenu', (e) => e.preventDefault());
 
     logoDiv.appendChild(img);
     container.appendChild(logoDiv);
