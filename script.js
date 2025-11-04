@@ -715,11 +715,25 @@ function initAudioContext() {
 }
 
 function playPianoNote(frequency, duration = 0.3) {
-    if (!audioContext || audioContext.state === 'suspended') {
-        console.log('Audio not ready yet');
+    if (!audioContext) {
+        console.log('Audio context not initialized');
+        initAudioContext();
+    }
+
+    // Resume if suspended (browser autoplay policy)
+    if (audioContext.state === 'suspended') {
+        console.log('Resuming audio context...');
+        audioContext.resume().then(() => {
+            console.log('Audio resumed, playing note');
+            actuallyPlayNote(frequency, duration);
+        });
         return;
     }
 
+    actuallyPlayNote(frequency, duration);
+}
+
+function actuallyPlayNote(frequency, duration) {
     noteCount++;
 
     const oscillator = audioContext.createOscillator();
