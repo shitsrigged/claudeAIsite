@@ -113,6 +113,7 @@ nav a:hover {
     position: absolute;
     cursor: pointer;
     user-select: none;
+    touch-action: none;
 }
 
 .gif-item:hover {

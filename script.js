@@ -199,6 +199,7 @@ function createGif(gifData, container) {
 // Drag functionality
 function makeDraggable(element) {
     let isDragging = false;
+    let hasMoved = false;
     let startX;
     let startY;
     let startLeft;
@@ -214,6 +215,7 @@ function makeDraggable(element) {
         }
 
         isDragging = true;
+        hasMoved = false;
 
         // Store original z-index and boost it while dragging
         element.dataset.originalZIndex = element.style.zIndex;
@@ -225,6 +227,7 @@ function makeDraggable(element) {
         if (e.type === 'touchstart') {
             startX = e.touches[0].clientX;
             startY = e.touches[0].clientY;
+            e.preventDefault(); // Prevent touch scrolling
         } else {
             startX = e.clientX;
             startY = e.clientY;
@@ -240,12 +243,11 @@ function makeDraggable(element) {
     function drag(e) {
         if (!isDragging) return;
 
-        e.preventDefault();
-
         let clientX, clientY;
         if (e.type === 'touchmove') {
             clientX = e.touches[0].clientX;
             clientY = e.touches[0].clientY;
+            e.preventDefault(); // Prevent scrolling while dragging
         } else {
             clientX = e.clientX;
             clientY = e.clientY;
@@ -253,6 +255,12 @@ function makeDraggable(element) {
 
         const deltaX = clientX - startX;
         const deltaY = clientY - startY;
+
+        // Check if actually moved (threshold of 5px to distinguish from tap)
+        if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+            hasMoved = true;
+            e.preventDefault();
+        }
 
         element.style.left = (startLeft + deltaX) + 'px';
         element.style.top = (startTop + deltaY) + 'px';
@@ -270,7 +278,15 @@ function makeDraggable(element) {
         document.removeEventListener('touchmove', drag);
         document.removeEventListener('mouseup', dragEnd);
         document.removeEventListener('touchend', dragEnd);
+
+        // If didn't actually move, this was a tap/click - let click handler deal with it
+        if (!hasMoved && e.type === 'touchend') {
+            // Trigger a synthetic click for the info box toggle
+            element.click();
+        }
     }
+
+    return { get hasMoved() { return hasMoved; } };
 }
 
 // Fetch gif data from Google Sheets
