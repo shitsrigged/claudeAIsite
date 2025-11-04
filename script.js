@@ -715,25 +715,39 @@ function initAudioContext() {
 }
 
 function playPianoNote(frequency, duration = 0.3) {
+    const startTime = Date.now();
+    console.log('🎵 Play requested at', startTime);
+
+    // Create audio context if needed (only on first interaction)
     if (!audioContext) {
-        console.log('Audio context not initialized');
+        console.log('Creating audio context...');
+        const createStart = Date.now();
         initAudioContext();
+        console.log('Audio context created in', Date.now() - createStart, 'ms');
     }
 
-    // Resume if suspended (browser autoplay policy)
+    console.log('Audio state:', audioContext.state);
+
+    // Resume if suspended
     if (audioContext.state === 'suspended') {
+        const resumeStart = Date.now();
         console.log('Resuming audio context...');
         audioContext.resume().then(() => {
-            console.log('Audio resumed, playing note');
+            console.log('✅ Audio resumed in', Date.now() - resumeStart, 'ms');
             actuallyPlayNote(frequency, duration);
+            console.log('Total time:', Date.now() - startTime, 'ms');
+        }).catch(err => {
+            console.error('❌ Resume error:', err);
         });
         return;
     }
 
     actuallyPlayNote(frequency, duration);
+    console.log('Total time:', Date.now() - startTime, 'ms');
 }
 
 function actuallyPlayNote(frequency, duration) {
+    console.log('▶️ Actually playing', frequency, 'Hz');
     noteCount++;
 
     const oscillator = audioContext.createOscillator();
@@ -744,22 +758,16 @@ function actuallyPlayNote(frequency, duration) {
 
     oscillator.frequency.value = frequency;
 
-    // ADSR envelope for piano-like sound
+    // ADSR envelope
     const now = audioContext.currentTime;
     gainNode.gain.setValueAtTime(0, now);
-    gainNode.gain.linearRampToValueAtTime(0.3, now + 0.01); // Attack
-    gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration); // Decay/Release
+    gainNode.gain.linearRampToValueAtTime(0.3, now + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration);
 
-    // Connect audio graph: oscillator -> gain -> [dry + reverb + delay] -> output
+    // Connect: oscillator -> gain -> [dry + reverb + delay]
     oscillator.connect(gainNode);
-
-    // Dry signal
     gainNode.connect(audioContext.destination);
-
-    // Reverb send
     gainNode.connect(reverbNode);
-
-    // Delay send
     gainNode.connect(delayNode);
 
     oscillator.start(now);
@@ -775,8 +783,6 @@ function setupScrollSectionHovers() {
 
     scrollSections.forEach((section, index) => {
         const noteFrequency = notes[index % notes.length];
-
-        console.log('Setting up audio for section ' + index + ' with note ' + noteFrequency + 'Hz');
 
         // Desktop: hover
         section.addEventListener('mouseenter', () => {
@@ -840,27 +846,6 @@ function setupCursorTrail() {
     });
 }
 
-// Pre-initialize audio on first user interaction
-let audioInitialized = false;
-
-function preInitAudio() {
-    if (!audioInitialized) {
-        console.log('🎵 Pre-initializing audio context...');
-        initAudioContext();
-        if (audioContext && audioContext.state === 'suspended') {
-            audioContext.resume().then(() => {
-                console.log('✅ Audio context ready and resumed');
-                audioInitialized = true;
-            }).catch(err => {
-                console.error('Error resuming audio:', err);
-            });
-        } else {
-            audioInitialized = true;
-            console.log('✅ Audio context ready');
-        }
-    }
-}
-
 // Initialize when page loads
 window.addEventListener('load', async () => {
     await loadGifData();
@@ -869,17 +854,6 @@ window.addEventListener('load', async () => {
     loadScrollingSections();
     setupScrollSectionHovers();
     setupCursorTrail();
-
-    // Aggressively pre-init audio after a short delay (let page render first)
-    setTimeout(() => {
-        console.log('🎵 Initializing audio in background...');
-        preInitAudio();
-    }, 100);
-
-    // Also pre-init on any user interaction as backup
-    document.addEventListener('click', preInitAudio, { once: true });
-    document.addEventListener('touchstart', preInitAudio, { once: true });
-    document.addEventListener('mousemove', preInitAudio, { once: true });
 });
 
 // Optionally refresh positions on window resize
