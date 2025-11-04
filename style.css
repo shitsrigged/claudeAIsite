@@ -116,6 +116,12 @@ nav a:hover {
     touch-action: none;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
+    padding: 20px;
+    margin: -20px;
+}
+
+.gif-item.dragging {
+    opacity: 0.8;
 }
 
 .gif-item:hover {

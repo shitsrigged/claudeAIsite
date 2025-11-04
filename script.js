@@ -208,6 +208,7 @@ function makeDraggable(element) {
     let startY;
     let startLeft;
     let startTop;
+    let isTouchDevice = false;
 
     element.addEventListener('mousedown', dragStart);
     element.addEventListener('touchstart', dragStart, { passive: false });
@@ -218,8 +219,12 @@ function makeDraggable(element) {
             return;
         }
 
+        isTouchDevice = e.type === 'touchstart';
         isDragging = true;
         hasMoved = false;
+
+        // Add visual feedback
+        element.classList.add('dragging');
 
         // Store original z-index and boost it while dragging
         element.dataset.originalZIndex = element.style.zIndex;
@@ -228,20 +233,26 @@ function makeDraggable(element) {
         startLeft = parseFloat(element.style.left) || 0;
         startTop = parseFloat(element.style.top) || 0;
 
-        if (e.type === 'touchstart') {
+        if (isTouchDevice) {
             startX = e.touches[0].clientX;
             startY = e.touches[0].clientY;
             e.preventDefault(); // Prevent touch scrolling
+            e.stopPropagation();
         } else {
             startX = e.clientX;
             startY = e.clientY;
             e.preventDefault();
         }
 
-        document.addEventListener('mousemove', drag);
-        document.addEventListener('touchmove', drag, { passive: false });
-        document.addEventListener('mouseup', dragEnd);
-        document.addEventListener('touchend', dragEnd);
+        // Use element-level listeners for better touch tracking
+        if (isTouchDevice) {
+            element.addEventListener('touchmove', drag, { passive: false });
+            element.addEventListener('touchend', dragEnd);
+            element.addEventListener('touchcancel', dragEnd);
+        } else {
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', dragEnd);
+        }
     }
 
     function drag(e) {
@@ -249,9 +260,11 @@ function makeDraggable(element) {
 
         let clientX, clientY;
         if (e.type === 'touchmove') {
+            if (e.touches.length === 0) return;
             clientX = e.touches[0].clientX;
             clientY = e.touches[0].clientY;
             e.preventDefault(); // Prevent scrolling while dragging
+            e.stopPropagation();
         } else {
             clientX = e.clientX;
             clientY = e.clientY;
@@ -260,10 +273,10 @@ function makeDraggable(element) {
         const deltaX = clientX - startX;
         const deltaY = clientY - startY;
 
-        // Check if actually moved (threshold of 5px to distinguish from tap)
-        if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+        // For touch, very sensitive - no threshold
+        // For mouse, small threshold to distinguish from click
+        if (isTouchDevice || Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
             hasMoved = true;
-            e.preventDefault();
         }
 
         element.style.left = (startLeft + deltaX) + 'px';
@@ -275,13 +288,20 @@ function makeDraggable(element) {
 
         isDragging = false;
 
+        // Remove visual feedback
+        element.classList.remove('dragging');
+
         // Restore original z-index
         element.style.zIndex = element.dataset.originalZIndex || getRandomZIndex();
 
-        document.removeEventListener('mousemove', drag);
-        document.removeEventListener('touchmove', drag);
-        document.removeEventListener('mouseup', dragEnd);
-        document.removeEventListener('touchend', dragEnd);
+        if (isTouchDevice) {
+            element.removeEventListener('touchmove', drag);
+            element.removeEventListener('touchend', dragEnd);
+            element.removeEventListener('touchcancel', dragEnd);
+        } else {
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', dragEnd);
+        }
 
         // If didn't actually move, this was a tap/click - let click handler deal with it
         if (!hasMoved && e.type === 'touchend') {
