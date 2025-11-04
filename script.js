@@ -163,6 +163,7 @@ function createGif(gifData, container) {
     // Store reference to infoBox for timeout management
     gifDiv._infoBox = infoBox;
     gifDiv._hideTimeoutId = null;
+    gifDiv._lastClickTime = 0;
 
     function clearInfoBoxTimeout() {
         if (gifDiv._hideTimeoutId) {
@@ -204,6 +205,15 @@ function createGif(gifData, container) {
     // Click/tap to toggle the info box
     gifDiv.addEventListener('click', (e) => {
         e.stopPropagation();
+
+        // Prevent rapid double-clicks (ghost clicks on mobile)
+        const now = Date.now();
+        if (now - gifDiv._lastClickTime < 500) {
+            console.log('Ignoring rapid double-click');
+            return;
+        }
+        gifDiv._lastClickTime = now;
+
         console.log('Gif clicked, infoBox active?', infoBox.classList.contains('active'));
 
         clearInfoBoxTimeout();
