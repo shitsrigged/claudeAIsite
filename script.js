@@ -661,25 +661,29 @@ let noteCount = 0;
 
 function initAudioContext() {
     if (!audioContext) {
+        console.log('Creating audio context...');
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-        // Create reverb using convolver
+        // Create reverb using convolver - LIGHTER VERSION
         reverbNode = audioContext.createConvolver();
 
-        // Create impulse response for reverb (simulates room)
+        // Create shorter impulse response for reverb (0.5 seconds instead of 2)
         const sampleRate = audioContext.sampleRate;
-        const reverbTime = 2; // 2 seconds reverb
+        const reverbTime = 0.5; // Shorter reverb for faster loading
         const reverbLength = sampleRate * reverbTime;
         const impulse = audioContext.createBuffer(2, reverbLength, sampleRate);
 
+        // Simplified impulse generation - fewer calculations
+        const decay = 3.0;
         for (let channel = 0; channel < 2; channel++) {
             const channelData = impulse.getChannelData(channel);
             for (let i = 0; i < reverbLength; i++) {
-                channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / reverbLength, 2);
+                channelData[i] = (Math.random() * 2 - 1) * Math.exp(-decay * i / reverbLength);
             }
         }
 
         reverbNode.buffer = impulse;
+        console.log('Reverb created');
 
         // Create space echo/delay
         delayNode = audioContext.createDelay(1.0);
@@ -705,31 +709,24 @@ function initAudioContext() {
 
         delayNode.connect(delayGain);
         delayGain.connect(audioContext.destination);
+
+        console.log('Audio context fully initialized');
     }
 }
 
-async function playPianoNote(frequency, duration = 0.3) {
-    initAudioContext();
-
-    // Resume audio context if suspended (browser autoplay policy)
-    if (audioContext.state === 'suspended') {
-        console.log('🔊 Resuming audio context...');
-        await audioContext.resume();
+function playPianoNote(frequency, duration = 0.3) {
+    if (!audioContext || audioContext.state === 'suspended') {
+        console.log('Audio not ready yet');
+        return;
     }
 
     noteCount++;
-    console.log('🎵 Playing note #' + noteCount + ', frequency: ' + frequency + 'Hz');
 
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
 
     // Every 7th note is a square wave
-    if (noteCount % 7 === 0) {
-        oscillator.type = 'square';
-        console.log('🟦 Square wave!');
-    } else {
-        oscillator.type = 'sine';
-    }
+    oscillator.type = (noteCount % 7 === 0) ? 'square' : 'sine';
 
     oscillator.frequency.value = frequency;
 
@@ -746,19 +743,13 @@ async function playPianoNote(frequency, duration = 0.3) {
     gainNode.connect(audioContext.destination);
 
     // Reverb send
-    if (reverbNode) {
-        gainNode.connect(reverbNode);
-    }
+    gainNode.connect(reverbNode);
 
     // Delay send
-    if (delayNode) {
-        gainNode.connect(delayNode);
-    }
+    gainNode.connect(delayNode);
 
     oscillator.start(now);
     oscillator.stop(now + duration);
-
-    console.log('✅ Note playing');
 }
 
 // Random color on hover/tap for scroll sections with piano notes
@@ -774,15 +765,10 @@ function setupScrollSectionHovers() {
         console.log('Setting up audio for section ' + index + ' with note ' + noteFrequency + 'Hz');
 
         // Desktop: hover
-        section.addEventListener('mouseenter', async () => {
-            console.log('Mouse enter on section ' + index);
+        section.addEventListener('mouseenter', () => {
             const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
             section.style.backgroundColor = randomColor;
-            try {
-                await playPianoNote(noteFrequency);
-            } catch (error) {
-                console.error('Error playing note:', error);
-            }
+            playPianoNote(noteFrequency);
         });
 
         section.addEventListener('mouseleave', () => {
@@ -790,15 +776,10 @@ function setupScrollSectionHovers() {
         });
 
         // Mobile: tap to change color and play note
-        section.addEventListener('touchstart', async (e) => {
-            console.log('Touch on section ' + index);
+        section.addEventListener('touchstart', (e) => {
             const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
             section.style.backgroundColor = randomColor;
-            try {
-                await playPianoNote(noteFrequency);
-            } catch (error) {
-                console.error('Error playing note:', error);
-            }
+            playPianoNote(noteFrequency);
 
             // Reset to white after 2 seconds
             setTimeout(() => {
@@ -850,15 +831,18 @@ let audioInitialized = false;
 
 function preInitAudio() {
     if (!audioInitialized) {
-        console.log('🎵 Pre-initializing audio context on user interaction...');
+        console.log('🎵 Pre-initializing audio context...');
         initAudioContext();
-        if (audioContext.state === 'suspended') {
+        if (audioContext && audioContext.state === 'suspended') {
             audioContext.resume().then(() => {
-                console.log('✅ Audio context ready');
+                console.log('✅ Audio context ready and resumed');
                 audioInitialized = true;
+            }).catch(err => {
+                console.error('Error resuming audio:', err);
             });
         } else {
             audioInitialized = true;
+            console.log('✅ Audio context ready');
         }
     }
 }
@@ -872,7 +856,13 @@ window.addEventListener('load', async () => {
     setupScrollSectionHovers();
     setupCursorTrail();
 
-    // Pre-init audio on any user interaction
+    // Aggressively pre-init audio after a short delay (let page render first)
+    setTimeout(() => {
+        console.log('🎵 Initializing audio in background...');
+        preInitAudio();
+    }, 100);
+
+    // Also pre-init on any user interaction as backup
     document.addEventListener('click', preInitAudio, { once: true });
     document.addEventListener('touchstart', preInitAudio, { once: true });
     document.addEventListener('mousemove', preInitAudio, { once: true });
