@@ -346,6 +346,33 @@ nav a:hover {
     }
 }
 
+/* Debug panel for mobile */
+#debug-panel {
+    position: fixed;
+    bottom: 130px;
+    left: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.9);
+    color: #00ff00;
+    padding: 10px;
+    font-size: 10px;
+    max-height: 150px;
+    overflow-y: auto;
+    z-index: 99999;
+    border: 1px solid #00ff00;
+    font-family: 'Courier New', monospace;
+    display: none;
+}
+
+#debug-panel.active {
+    display: block;
+}
+
+#debug-panel .log-entry {
+    margin-bottom: 3px;
+    border-bottom: 1px solid #003300;
+}
+
 /* Mobile optimization */
 @media (max-width: 768px) {
     nav {

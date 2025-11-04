@@ -1,3 +1,22 @@
+// Debug logging for mobile
+function debugLog(message) {
+    console.log(message);
+    const debugPanel = document.getElementById('debug-panel');
+    if (debugPanel && window.innerWidth <= 768) {
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        const time = new Date().toLocaleTimeString();
+        entry.textContent = `[${time}] ${message}`;
+        debugPanel.appendChild(entry);
+        debugPanel.scrollTop = debugPanel.scrollHeight;
+
+        // Keep only last 20 entries
+        while (debugPanel.children.length > 20) {
+            debugPanel.removeChild(debugPanel.firstChild);
+        }
+    }
+}
+
 // Google Sheets URL - Replace with your published sheet URL
 const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfknahyT_elgMF_uoR--PmOmFjjAf_JDcJzjg9ygFjhsAi6CjAGDr1zLAJ6QKWTRwZVLE1yctGqrsr/pub?output=csv';
 
@@ -173,7 +192,7 @@ function createGif(gifData, container) {
     }
 
     function showInfoBox() {
-        console.log('Showing info box and starting timer');
+        debugLog('Showing info box and starting timer');
         clearInfoBoxTimeout();
         infoBox.classList.add('active');
         infoBox.classList.remove('dither-fade');
@@ -187,7 +206,7 @@ function createGif(gifData, container) {
     }
 
     function hideInfoBox() {
-        console.log('Hiding info box');
+        debugLog('Hiding info box');
         clearInfoBoxTimeout();
         infoBox.classList.add('dither-fade');
         setTimeout(() => {
@@ -221,11 +240,11 @@ function createGif(gifData, container) {
 
         // Ignore clicks that came right after touch events (ghost clicks)
         if (gifDiv._justTouched) {
-            console.log('Ignoring click after touch (ghost click blocked)');
+            debugLog('❌ GHOST CLICK BLOCKED');
             return; // Don't reset the flag here - let the timeout handle it
         }
 
-        console.log('Gif clicked, infoBox active?', infoBox.classList.contains('active'));
+        debugLog('Click event, active=' + infoBox.classList.contains('active'));
 
         // Toggle: if active, hide it; if not active, show it
         if (infoBox.classList.contains('active')) {
@@ -378,7 +397,7 @@ function makeDraggable(element) {
         e.preventDefault(); // Prevent ghost click
         e.stopPropagation();
 
-        console.log('Touch end, hasMoved:', hasMoved);
+        debugLog('Touch end, moved=' + hasMoved);
 
         isDragging = false;
         element.classList.remove('dragging');
@@ -386,23 +405,23 @@ function makeDraggable(element) {
 
         // Quick tap = show info (only if we didn't drag)
         if (!hasMoved) {
-            console.log('Tap detected, showing info box directly');
+            debugLog('👆 TAP detected');
 
             // Set flag FIRST to block any ghost click event
             element._justTouched = true;
             setTimeout(() => {
                 element._justTouched = false;
-                console.log('Cleared _justTouched flag');
+                debugLog('🔓 Flag cleared');
             }, 800); // Longer timeout to catch all ghost clicks
 
             // Small delay to ensure flag is set before any ghost click
             setTimeout(() => {
                 // Toggle info box directly (no synthetic click)
                 if (element._infoBox && element._infoBox.classList.contains('active')) {
-                    console.log('Hiding info box on tap');
+                    debugLog('➡️ Hiding on tap');
                     if (element._hideInfoBox) element._hideInfoBox();
                 } else {
-                    console.log('Showing info box on tap');
+                    debugLog('➡️ Showing on tap');
                     if (element._showInfoBox) element._showInfoBox();
                 }
             }, 0);
