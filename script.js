@@ -181,9 +181,10 @@ function createGif(gifData, container) {
         }, 1000);
     });
 
-    // Click to toggle the info box
+    // Click/tap to toggle the info box
     gifDiv.addEventListener('click', (e) => {
         e.stopPropagation();
+
         if (hideTimeout) {
             clearTimeout(hideTimeout);
         }
@@ -199,16 +200,20 @@ function createGif(gifData, container) {
             infoBox.classList.add('active');
             infoBox.classList.remove('dither-fade');
 
-            // Auto-hide after showing
+            // Auto-hide after 3 seconds (longer for mobile to read)
             hideTimeout = setTimeout(() => {
                 infoBox.classList.add('dither-fade');
                 setTimeout(() => {
                     infoBox.classList.remove('active');
                     infoBox.classList.remove('dither-fade');
                 }, 500);
-            }, 1000);
+            }, 3000);
         }
     });
+
+    // Store reference to hideTimeout so dragging can access it
+    gifDiv._hideTimeout = hideTimeout;
+    gifDiv._infoBox = infoBox;
 }
 
 // Drag functionality
@@ -219,6 +224,38 @@ function makeDraggable(element) {
     let startY;
     let startLeft;
     let startTop;
+    let lastTrailTime = 0;
+    let hueRotation = 0;
+
+    function createDragTrail() {
+        const now = Date.now();
+        if (now - lastTrailTime < 30) return; // Throttle trail creation
+        lastTrailTime = now;
+
+        const trail = element.cloneNode(true);
+        trail.className = 'drag-trail';
+        trail.style.left = element.style.left;
+        trail.style.top = element.style.top;
+        trail.style.width = element.style.width;
+        trail.style.height = element.style.height;
+        trail.style.zIndex = 5;
+
+        // Apply rainbow effect
+        const img = trail.querySelector('img');
+        if (img) {
+            img.style.filter = `invert(1) sepia(1) saturate(5) hue-rotate(${hueRotation}deg)`;
+        }
+
+        hueRotation = (hueRotation + 30) % 360;
+
+        // Remove info box from trail
+        const infoBox = trail.querySelector('.gif-info-box');
+        if (infoBox) infoBox.remove();
+
+        element.parentElement.appendChild(trail);
+
+        setTimeout(() => trail.remove(), 600);
+    }
 
     // Mouse events
     element.addEventListener('mousedown', (e) => {
@@ -226,6 +263,7 @@ function makeDraggable(element) {
 
         isDragging = true;
         hasMoved = false;
+        hueRotation = Math.random() * 360; // Random starting hue
 
         element.classList.add('dragging');
         element.dataset.originalZIndex = element.style.zIndex;
@@ -247,6 +285,7 @@ function makeDraggable(element) {
 
         if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
             hasMoved = true;
+            createDragTrail();
         }
 
         element.style.left = (startLeft + deltaX) + 'px';
@@ -269,6 +308,7 @@ function makeDraggable(element) {
         touchStartTime = Date.now();
         isDragging = true;
         hasMoved = false;
+        hueRotation = Math.random() * 360; // Random starting hue
 
         element.classList.add('dragging');
         element.dataset.originalZIndex = element.style.zIndex;
@@ -293,6 +333,7 @@ function makeDraggable(element) {
         const deltaY = touch.clientY - startY;
 
         hasMoved = true;
+        createDragTrail(); // Create rainbow trail on touch drag
 
         element.style.left = (startLeft + deltaX) + 'px';
         element.style.top = (startTop + deltaY) + 'px';

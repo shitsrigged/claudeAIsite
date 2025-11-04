@@ -121,7 +121,27 @@ nav a:hover {
 }
 
 .gif-item.dragging {
-    opacity: 0.8;
+    opacity: 0.9;
+}
+
+/* Drag trail effect */
+.drag-trail {
+    position: absolute;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0.5;
+    animation: trailFade 0.6s ease-out forwards;
+}
+
+@keyframes trailFade {
+    0% {
+        opacity: 0.5;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.9);
+    }
 }
 
 .gif-item:hover {
