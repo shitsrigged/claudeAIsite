@@ -113,6 +113,16 @@ function createGif(gifData, container) {
     gifDiv.style.height = size + 'px';
     gifDiv.style.zIndex = zIndex;
 
+    // Store base position for floating animation
+    gifDiv._baseX = position.x;
+    gifDiv._baseY = position.y;
+    gifDiv._floatPhase = Math.random() * Math.PI * 2; // Random starting phase
+    gifDiv._floatSpeedX = 0.0005 + Math.random() * 0.001; // Random speed
+    gifDiv._floatSpeedY = 0.0008 + Math.random() * 0.001;
+    gifDiv._floatAmplitudeX = 2 + Math.random() * 3; // 2-5px horizontal movement
+    gifDiv._floatAmplitudeY = 3 + Math.random() * 5; // 3-8px vertical movement
+    gifDiv._isDragging = false;
+
     const img = document.createElement('img');
     img.src = gifData.url;
     img.alt = gifData.name;
@@ -315,6 +325,9 @@ function makeDraggable(element) {
         hasMoved = false;
         hueRotation = Math.random() * 360; // Random starting hue
 
+        // Disable floating animation while dragging
+        element._isDragging = true;
+
         // Reset arpeggiator
         arpIndex = 0;
         totalDistance = 0;
@@ -362,6 +375,11 @@ function makeDraggable(element) {
         isDragging = false;
         element.classList.remove('dragging');
         element.style.zIndex = element.dataset.originalZIndex || getRandomZIndex();
+
+        // Re-enable floating and update base position
+        element._isDragging = false;
+        element._baseX = parseFloat(element.style.left) || element._baseX;
+        element._baseY = parseFloat(element.style.top) || element._baseY;
     });
 
     // Touch events - super sensitive
@@ -374,6 +392,9 @@ function makeDraggable(element) {
         isDragging = true;
         hasMoved = false;
         hueRotation = Math.random() * 360; // Random starting hue
+
+        // Disable floating animation while dragging
+        element._isDragging = true;
 
         // Reset arpeggiator
         arpIndex = 0;
@@ -430,6 +451,11 @@ function makeDraggable(element) {
         isDragging = false;
         element.classList.remove('dragging');
         element.style.zIndex = element.dataset.originalZIndex || getRandomZIndex();
+
+        // Re-enable floating and update base position
+        element._isDragging = false;
+        element._baseX = parseFloat(element.style.left) || element._baseX;
+        element._baseY = parseFloat(element.style.top) || element._baseY;
 
         // Quick tap = show info (only if we didn't drag)
         if (!hasMoved) {
@@ -889,6 +915,42 @@ function setupCursorTrail() {
     });
 }
 
+// Floating animation for all GIFs
+function startFloatingAnimation() {
+    let time = 0;
+
+    function animate() {
+        time++;
+
+        // Animate all GIF items
+        const gifs = document.querySelectorAll('.gif-item:not(.logo-item)');
+        gifs.forEach(gif => {
+            // Skip if being dragged
+            if (gif._isDragging) return;
+
+            // Calculate floating offset using sine waves for smooth, natural motion
+            const offsetX = Math.sin(time * gif._floatSpeedX + gif._floatPhase) * gif._floatAmplitudeX;
+            const offsetY = Math.sin(time * gif._floatSpeedY + gif._floatPhase * 1.3) * gif._floatAmplitudeY;
+
+            // Add a second wave for more complex, organic movement
+            const offsetX2 = Math.sin(time * gif._floatSpeedX * 0.7 + gif._floatPhase * 2) * (gif._floatAmplitudeX * 0.5);
+            const offsetY2 = Math.cos(time * gif._floatSpeedY * 0.5 + gif._floatPhase * 1.7) * (gif._floatAmplitudeY * 0.6);
+
+            // Apply subtle pulsing scale
+            const scale = 1 + Math.sin(time * gif._floatSpeedY * 0.3 + gif._floatPhase) * 0.01; // ±1% size change
+
+            // Apply the floating offset to base position
+            gif.style.left = (gif._baseX + offsetX + offsetX2) + 'px';
+            gif.style.top = (gif._baseY + offsetY + offsetY2) + 'px';
+            gif.style.transform = `scale(${scale})`;
+        });
+
+        requestAnimationFrame(animate);
+    }
+
+    animate();
+}
+
 // Initialize when page loads
 window.addEventListener('load', async () => {
     await loadGifData();
@@ -897,6 +959,9 @@ window.addEventListener('load', async () => {
     loadScrollingSections();
     setupScrollSectionHovers();
     setupCursorTrail();
+
+    // Start floating animation
+    startFloatingAnimation();
 
     // Initialize audio immediately
     console.log('🎵 Initializing audio on page load...');
