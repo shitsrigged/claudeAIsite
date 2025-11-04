@@ -161,7 +161,6 @@ function createGif(gifData, container) {
     makeDraggable(gifDiv);
 
     let hideTimeout = null;
-    let isPinned = false;
 
     // Show info box on hover
     gifDiv.addEventListener('mouseenter', () => {
@@ -169,10 +168,38 @@ function createGif(gifData, container) {
             clearTimeout(hideTimeout);
         }
         infoBox.classList.add('active');
+        infoBox.classList.remove('dither-fade');
     });
 
     gifDiv.addEventListener('mouseleave', () => {
-        if (!isPinned) {
+        hideTimeout = setTimeout(() => {
+            infoBox.classList.add('dither-fade');
+            setTimeout(() => {
+                infoBox.classList.remove('active');
+                infoBox.classList.remove('dither-fade');
+            }, 500);
+        }, 1000);
+    });
+
+    // Click to toggle the info box
+    gifDiv.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (hideTimeout) {
+            clearTimeout(hideTimeout);
+        }
+
+        // Toggle: if active, hide it with fade; if not active, show it
+        if (infoBox.classList.contains('active')) {
+            infoBox.classList.add('dither-fade');
+            setTimeout(() => {
+                infoBox.classList.remove('active');
+                infoBox.classList.remove('dither-fade');
+            }, 500);
+        } else {
+            infoBox.classList.add('active');
+            infoBox.classList.remove('dither-fade');
+
+            // Auto-hide after showing
             hideTimeout = setTimeout(() => {
                 infoBox.classList.add('dither-fade');
                 setTimeout(() => {
@@ -180,22 +207,6 @@ function createGif(gifData, container) {
                     infoBox.classList.remove('dither-fade');
                 }, 500);
             }, 1000);
-        }
-    });
-
-    // Click to pin/unpin the info box
-    gifDiv.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (hideTimeout) {
-            clearTimeout(hideTimeout);
-        }
-
-        if (isPinned) {
-            isPinned = false;
-            infoBox.classList.remove('active');
-        } else {
-            isPinned = true;
-            infoBox.classList.add('active');
         }
     });
 }
