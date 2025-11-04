@@ -845,6 +845,24 @@ function setupCursorTrail() {
     });
 }
 
+// Pre-initialize audio on first user interaction
+let audioInitialized = false;
+
+function preInitAudio() {
+    if (!audioInitialized) {
+        console.log('🎵 Pre-initializing audio context on user interaction...');
+        initAudioContext();
+        if (audioContext.state === 'suspended') {
+            audioContext.resume().then(() => {
+                console.log('✅ Audio context ready');
+                audioInitialized = true;
+            });
+        } else {
+            audioInitialized = true;
+        }
+    }
+}
+
 // Initialize when page loads
 window.addEventListener('load', async () => {
     await loadGifData();
@@ -853,6 +871,11 @@ window.addEventListener('load', async () => {
     loadScrollingSections();
     setupScrollSectionHovers();
     setupCursorTrail();
+
+    // Pre-init audio on any user interaction
+    document.addEventListener('click', preInitAudio, { once: true });
+    document.addEventListener('touchstart', preInitAudio, { once: true });
+    document.addEventListener('mousemove', preInitAudio, { once: true });
 });
 
 // Optionally refresh positions on window resize
