@@ -654,23 +654,76 @@ function loadScrollingSections() {
 
 // Audio context for piano notes
 let audioContext = null;
+let reverbNode = null;
+let delayNode = null;
+let delayFeedback = null;
+let noteCount = 0;
 
 function initAudioContext() {
     if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Create reverb using convolver
+        reverbNode = audioContext.createConvolver();
+
+        // Create impulse response for reverb (simulates room)
+        const sampleRate = audioContext.sampleRate;
+        const reverbTime = 2; // 2 seconds reverb
+        const reverbLength = sampleRate * reverbTime;
+        const impulse = audioContext.createBuffer(2, reverbLength, sampleRate);
+
+        for (let channel = 0; channel < 2; channel++) {
+            const channelData = impulse.getChannelData(channel);
+            for (let i = 0; i < reverbLength; i++) {
+                channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / reverbLength, 2);
+            }
+        }
+
+        reverbNode.buffer = impulse;
+
+        // Create space echo/delay
+        delayNode = audioContext.createDelay(1.0);
+        delayNode.delayTime.value = 0.375; // 375ms delay (space echo timing)
+
+        delayFeedback = audioContext.createGain();
+        delayFeedback.gain.value = 0.4; // Feedback amount
+
+        // Connect delay feedback loop
+        delayNode.connect(delayFeedback);
+        delayFeedback.connect(delayNode);
+
+        // Create wet/dry mix for reverb
+        const reverbGain = audioContext.createGain();
+        reverbGain.gain.value = 0.3; // 30% wet
+
+        const delayGain = audioContext.createGain();
+        delayGain.gain.value = 0.5; // 50% delay mix
+
+        // Connect effects to output
+        reverbNode.connect(reverbGain);
+        reverbGain.connect(audioContext.destination);
+
+        delayNode.connect(delayGain);
+        delayGain.connect(audioContext.destination);
     }
 }
 
 function playPianoNote(frequency, duration = 0.3) {
     initAudioContext();
 
+    noteCount++;
+
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+    // Every 7th note is a square wave
+    if (noteCount % 7 === 0) {
+        oscillator.type = 'square';
+        console.log('🟦 Square wave note #' + noteCount);
+    } else {
+        oscillator.type = 'sine';
+    }
 
-    oscillator.type = 'sine';
     oscillator.frequency.value = frequency;
 
     // ADSR envelope for piano-like sound
@@ -678,6 +731,18 @@ function playPianoNote(frequency, duration = 0.3) {
     gainNode.gain.setValueAtTime(0, now);
     gainNode.gain.linearRampToValueAtTime(0.3, now + 0.01); // Attack
     gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration); // Decay/Release
+
+    // Connect audio graph: oscillator -> gain -> [dry + reverb + delay] -> output
+    oscillator.connect(gainNode);
+
+    // Dry signal
+    gainNode.connect(audioContext.destination);
+
+    // Reverb send
+    gainNode.connect(reverbNode);
+
+    // Delay send
+    gainNode.connect(delayNode);
 
     oscillator.start(now);
     oscillator.stop(now + duration);
