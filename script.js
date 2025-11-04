@@ -652,102 +652,40 @@ function loadScrollingSections() {
     }
 }
 
-// Audio context for piano notes
+// Audio context for piano notes - ULTRA LIGHTWEIGHT
 let audioContext = null;
-let reverbNode = null;
 let delayNode = null;
 let delayFeedback = null;
+let delayGain = null;
 let noteCount = 0;
 
 function initAudioContext() {
     if (!audioContext) {
-        console.log('Creating audio context...');
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-        // Create reverb using convolver - LIGHTER VERSION
-        reverbNode = audioContext.createConvolver();
-
-        // Create shorter impulse response for reverb (0.5 seconds instead of 2)
-        const sampleRate = audioContext.sampleRate;
-        const reverbTime = 0.5; // Shorter reverb for faster loading
-        const reverbLength = sampleRate * reverbTime;
-        const impulse = audioContext.createBuffer(2, reverbLength, sampleRate);
-
-        // Simplified impulse generation - fewer calculations
-        const decay = 3.0;
-        for (let channel = 0; channel < 2; channel++) {
-            const channelData = impulse.getChannelData(channel);
-            for (let i = 0; i < reverbLength; i++) {
-                channelData[i] = (Math.random() * 2 - 1) * Math.exp(-decay * i / reverbLength);
-            }
-        }
-
-        reverbNode.buffer = impulse;
-        console.log('Reverb created');
-
-        // Create space echo/delay
+        // Simple delay only (no heavy reverb convolver)
         delayNode = audioContext.createDelay(1.0);
-        delayNode.delayTime.value = 0.375; // 375ms delay (space echo timing)
+        delayNode.delayTime.value = 0.375;
 
         delayFeedback = audioContext.createGain();
-        delayFeedback.gain.value = 0.4; // Feedback amount
+        delayFeedback.gain.value = 0.3;
 
-        // Connect delay feedback loop
+        delayGain = audioContext.createGain();
+        delayGain.gain.value = 0.4;
+
+        // Delay feedback loop
         delayNode.connect(delayFeedback);
         delayFeedback.connect(delayNode);
-
-        // Create wet/dry mix for reverb
-        const reverbGain = audioContext.createGain();
-        reverbGain.gain.value = 0.3; // 30% wet
-
-        const delayGain = audioContext.createGain();
-        delayGain.gain.value = 0.5; // 50% delay mix
-
-        // Connect effects to output
-        reverbNode.connect(reverbGain);
-        reverbGain.connect(audioContext.destination);
-
         delayNode.connect(delayGain);
         delayGain.connect(audioContext.destination);
-
-        console.log('Audio context fully initialized');
     }
 }
 
 function playPianoNote(frequency, duration = 0.3) {
-    const startTime = Date.now();
-    console.log('🎵 Play requested at', startTime);
-
-    // Create audio context if needed (only on first interaction)
-    if (!audioContext) {
-        console.log('Creating audio context...');
-        const createStart = Date.now();
-        initAudioContext();
-        console.log('Audio context created in', Date.now() - createStart, 'ms');
+    if (!audioContext || audioContext.state === 'suspended') {
+        return; // Audio not ready, skip silently
     }
 
-    console.log('Audio state:', audioContext.state);
-
-    // Resume if suspended
-    if (audioContext.state === 'suspended') {
-        const resumeStart = Date.now();
-        console.log('Resuming audio context...');
-        audioContext.resume().then(() => {
-            console.log('✅ Audio resumed in', Date.now() - resumeStart, 'ms');
-            actuallyPlayNote(frequency, duration);
-            console.log('Total time:', Date.now() - startTime, 'ms');
-        }).catch(err => {
-            console.error('❌ Resume error:', err);
-        });
-        return;
-    }
-
-    actuallyPlayNote(frequency, duration);
-    console.log('Total time:', Date.now() - startTime, 'ms');
-}
-
-function actuallyPlayNote(frequency, duration) {
-    console.log('▶️ Actually playing', frequency, 'Hz');
     noteCount++;
 
     const oscillator = audioContext.createOscillator();
@@ -755,7 +693,6 @@ function actuallyPlayNote(frequency, duration) {
 
     // Every 7th note is a square wave
     oscillator.type = (noteCount % 7 === 0) ? 'square' : 'sine';
-
     oscillator.frequency.value = frequency;
 
     // ADSR envelope
@@ -764,11 +701,10 @@ function actuallyPlayNote(frequency, duration) {
     gainNode.gain.linearRampToValueAtTime(0.3, now + 0.01);
     gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration);
 
-    // Connect: oscillator -> gain -> [dry + reverb + delay]
+    // Connect: oscillator -> gain -> [dry + delay]
     oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    gainNode.connect(reverbNode);
-    gainNode.connect(delayNode);
+    gainNode.connect(audioContext.destination); // Dry
+    gainNode.connect(delayNode); // Delay/echo
 
     oscillator.start(now);
     oscillator.stop(now + duration);
@@ -854,6 +790,24 @@ window.addEventListener('load', async () => {
     loadScrollingSections();
     setupScrollSectionHovers();
     setupCursorTrail();
+
+    // Initialize audio immediately
+    console.log('🎵 Initializing audio on page load...');
+    initAudioContext();
+
+    // Set up one-time user interaction to resume audio context
+    const resumeAudio = async () => {
+        if (audioContext && audioContext.state === 'suspended') {
+            console.log('🔊 Resuming audio on user interaction...');
+            await audioContext.resume();
+            console.log('✅ Audio ready!');
+        }
+    };
+
+    // Resume on ANY user interaction (only once)
+    document.addEventListener('click', resumeAudio, { once: true });
+    document.addEventListener('touchstart', resumeAudio, { once: true });
+    document.addEventListener('keydown', resumeAudio, { once: true });
 });
 
 // Optionally refresh positions on window resize
