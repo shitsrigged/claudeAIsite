@@ -245,6 +245,9 @@ function makeDraggable(element) {
     let startTop;
     let lastTrailTime = 0;
     let hueRotation = 0;
+    let arpIndex = 0;
+    let totalDistance = 0;
+    let lastNoteDistance = 0;
 
     function createDragTrail() {
         const now = Date.now();
@@ -274,13 +277,34 @@ function makeDraggable(element) {
         hueRotation = (hueRotation + 30) % 360;
 
         element.parentElement.appendChild(trail);
-        console.log('Created drag trail at', trail.style.left, trail.style.top, 'hue:', hueRotation);
 
         setTimeout(() => {
             if (trail.parentElement) {
                 trail.remove();
             }
         }, 600);
+    }
+
+    function playArpNote() {
+        if (!audioContext || audioContext.state === 'suspended') return;
+
+        // Play note from arpeggiator scale
+        const frequency = arpeggiatorScale[arpIndex];
+        playPianoNote(frequency, 0.15); // Shorter duration for arp notes
+
+        // Move to next note in scale (bounce at ends)
+        lastArpNote++;
+        if (lastArpNote % 2 === 0) {
+            arpIndex++; // Going up
+            if (arpIndex >= arpeggiatorScale.length) {
+                arpIndex = arpeggiatorScale.length - 2; // Bounce back
+            }
+        } else {
+            arpIndex--; // Going down
+            if (arpIndex < 0) {
+                arpIndex = 1; // Bounce back
+            }
+        }
     }
 
     // Mouse events
@@ -290,6 +314,11 @@ function makeDraggable(element) {
         isDragging = true;
         hasMoved = false;
         hueRotation = Math.random() * 360; // Random starting hue
+
+        // Reset arpeggiator
+        arpIndex = 0;
+        totalDistance = 0;
+        lastNoteDistance = 0;
 
         element.classList.add('dragging');
         element.dataset.originalZIndex = element.style.zIndex;
@@ -312,6 +341,16 @@ function makeDraggable(element) {
         if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
             hasMoved = true;
             createDragTrail();
+
+            // Play arpeggiator notes based on distance traveled
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            totalDistance = distance;
+
+            // Play note every 30 pixels
+            if (totalDistance - lastNoteDistance > 30) {
+                playArpNote();
+                lastNoteDistance = totalDistance;
+            }
         }
 
         element.style.left = (startLeft + deltaX) + 'px';
@@ -335,6 +374,11 @@ function makeDraggable(element) {
         isDragging = true;
         hasMoved = false;
         hueRotation = Math.random() * 360; // Random starting hue
+
+        // Reset arpeggiator
+        arpIndex = 0;
+        totalDistance = 0;
+        lastNoteDistance = 0;
 
         element.classList.add('dragging');
         element.dataset.originalZIndex = element.style.zIndex;
@@ -360,6 +404,16 @@ function makeDraggable(element) {
 
         hasMoved = true;
         createDragTrail(); // Create rainbow trail on touch drag
+
+        // Play arpeggiator notes based on distance traveled
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        totalDistance = distance;
+
+        // Play note every 30 pixels
+        if (totalDistance - lastNoteDistance > 30) {
+            playArpNote();
+            lastNoteDistance = totalDistance;
+        }
 
         element.style.left = (startLeft + deltaX) + 'px';
         element.style.top = (startTop + deltaY) + 'px';
@@ -659,6 +713,26 @@ let delayNode = null;
 let delayFeedback = null;
 let noteCount = 0;
 
+// Arpeggiator scale (C major scale up and down)
+const arpeggiatorScale = [
+    261.63, // C4
+    293.66, // D4
+    329.63, // E4
+    349.23, // F4
+    392.00, // G4
+    440.00, // A4
+    493.88, // B4
+    523.25, // C5
+    587.33, // D5
+    659.25, // E5
+    698.46, // F5
+    783.99, // G5
+    880.00, // A5
+    987.77, // B5
+    1046.50 // C6
+];
+let lastArpNote = 0;
+
 function initAudioContext() {
     if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -760,7 +834,12 @@ function setupScrollSectionHovers() {
         });
 
         // Mobile: tap to change color and play note
-        section.addEventListener('touchstart', (e) => {
+        section.addEventListener('touchstart', async (e) => {
+            // Resume audio if needed
+            if (audioContext && audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
+
             const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
             section.style.backgroundColor = randomColor;
             playPianoNote(noteFrequency);
