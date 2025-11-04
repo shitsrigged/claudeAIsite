@@ -708,10 +708,17 @@ function initAudioContext() {
     }
 }
 
-function playPianoNote(frequency, duration = 0.3) {
+async function playPianoNote(frequency, duration = 0.3) {
     initAudioContext();
 
+    // Resume audio context if suspended (browser autoplay policy)
+    if (audioContext.state === 'suspended') {
+        console.log('🔊 Resuming audio context...');
+        await audioContext.resume();
+    }
+
     noteCount++;
+    console.log('🎵 Playing note #' + noteCount + ', frequency: ' + frequency + 'Hz');
 
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
@@ -719,7 +726,7 @@ function playPianoNote(frequency, duration = 0.3) {
     // Every 7th note is a square wave
     if (noteCount % 7 === 0) {
         oscillator.type = 'square';
-        console.log('🟦 Square wave note #' + noteCount);
+        console.log('🟦 Square wave!');
     } else {
         oscillator.type = 'sine';
     }
@@ -739,13 +746,19 @@ function playPianoNote(frequency, duration = 0.3) {
     gainNode.connect(audioContext.destination);
 
     // Reverb send
-    gainNode.connect(reverbNode);
+    if (reverbNode) {
+        gainNode.connect(reverbNode);
+    }
 
     // Delay send
-    gainNode.connect(delayNode);
+    if (delayNode) {
+        gainNode.connect(delayNode);
+    }
 
     oscillator.start(now);
     oscillator.stop(now + duration);
+
+    console.log('✅ Note playing');
 }
 
 // Random color on hover/tap for scroll sections with piano notes
@@ -758,11 +771,18 @@ function setupScrollSectionHovers() {
     scrollSections.forEach((section, index) => {
         const noteFrequency = notes[index % notes.length];
 
+        console.log('Setting up audio for section ' + index + ' with note ' + noteFrequency + 'Hz');
+
         // Desktop: hover
-        section.addEventListener('mouseenter', () => {
+        section.addEventListener('mouseenter', async () => {
+            console.log('Mouse enter on section ' + index);
             const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
             section.style.backgroundColor = randomColor;
-            playPianoNote(noteFrequency);
+            try {
+                await playPianoNote(noteFrequency);
+            } catch (error) {
+                console.error('Error playing note:', error);
+            }
         });
 
         section.addEventListener('mouseleave', () => {
@@ -770,10 +790,15 @@ function setupScrollSectionHovers() {
         });
 
         // Mobile: tap to change color and play note
-        section.addEventListener('touchstart', (e) => {
+        section.addEventListener('touchstart', async (e) => {
+            console.log('Touch on section ' + index);
             const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
             section.style.backgroundColor = randomColor;
-            playPianoNote(noteFrequency);
+            try {
+                await playPianoNote(noteFrequency);
+            } catch (error) {
+                console.error('Error playing note:', error);
+            }
 
             // Reset to white after 2 seconds
             setTimeout(() => {
