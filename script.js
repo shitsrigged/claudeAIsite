@@ -163,7 +163,7 @@ function createGif(gifData, container) {
     // Store reference to infoBox for timeout management
     gifDiv._infoBox = infoBox;
     gifDiv._hideTimeoutId = null;
-    gifDiv._lastClickTime = 0;
+    gifDiv._justTouched = false;
 
     function clearInfoBoxTimeout() {
         if (gifDiv._hideTimeoutId) {
@@ -172,8 +172,11 @@ function createGif(gifData, container) {
         }
     }
 
-    function startInfoBoxFadeTimer() {
+    function showInfoBox() {
+        console.log('Showing info box and starting timer');
         clearInfoBoxTimeout();
+        infoBox.classList.add('active');
+        infoBox.classList.remove('dither-fade');
         gifDiv._hideTimeoutId = setTimeout(() => {
             infoBox.classList.add('dither-fade');
             setTimeout(() => {
@@ -181,10 +184,19 @@ function createGif(gifData, container) {
                 infoBox.classList.remove('dither-fade');
             }, 500);
         }, 3000);
-        console.log('Started fade timer');
     }
 
-    // Show info box on hover
+    function hideInfoBox() {
+        console.log('Hiding info box');
+        clearInfoBoxTimeout();
+        infoBox.classList.add('dither-fade');
+        setTimeout(() => {
+            infoBox.classList.remove('active');
+            infoBox.classList.remove('dither-fade');
+        }, 500);
+    }
+
+    // Show info box on hover (desktop only)
     gifDiv.addEventListener('mouseenter', () => {
         clearInfoBoxTimeout();
         infoBox.classList.add('active');
@@ -202,37 +214,30 @@ function createGif(gifData, container) {
         }, 1000);
     });
 
-    // Click/tap to toggle the info box
+    // Click handler (desktop only - blocked after touch events)
     gifDiv.addEventListener('click', (e) => {
         e.stopPropagation();
 
-        // Prevent rapid double-clicks (ghost clicks on mobile)
-        const now = Date.now();
-        if (now - gifDiv._lastClickTime < 500) {
-            console.log('Ignoring rapid double-click');
+        // Ignore clicks that came right after touch events (ghost clicks)
+        if (gifDiv._justTouched) {
+            console.log('Ignoring click after touch');
+            gifDiv._justTouched = false;
             return;
         }
-        gifDiv._lastClickTime = now;
 
         console.log('Gif clicked, infoBox active?', infoBox.classList.contains('active'));
 
-        clearInfoBoxTimeout();
-
-        // Toggle: if active, hide it with fade; if not active, show it
+        // Toggle: if active, hide it; if not active, show it
         if (infoBox.classList.contains('active')) {
-            console.log('Hiding info box');
-            infoBox.classList.add('dither-fade');
-            setTimeout(() => {
-                infoBox.classList.remove('active');
-                infoBox.classList.remove('dither-fade');
-            }, 500);
+            hideInfoBox();
         } else {
-            console.log('Showing info box and starting timer');
-            infoBox.classList.add('active');
-            infoBox.classList.remove('dither-fade');
-            startInfoBoxFadeTimer();
+            showInfoBox();
         }
     });
+
+    // Store references for touch handling
+    gifDiv._showInfoBox = showInfoBox;
+    gifDiv._hideInfoBox = hideInfoBox;
 }
 
 // Drag functionality
@@ -378,11 +383,20 @@ function makeDraggable(element) {
 
         // Quick tap = show info (only if we didn't drag)
         if (!hasMoved) {
-            console.log('Tap detected, triggering click');
-            // Small delay to ensure touch events are complete
+            console.log('Tap detected, showing info box directly');
+
+            // Set flag to block ghost click event
+            element._justTouched = true;
             setTimeout(() => {
-                element.click();
-            }, 10);
+                element._justTouched = false;
+            }, 500);
+
+            // Toggle info box directly (no synthetic click)
+            if (element._infoBox && element._infoBox.classList.contains('active')) {
+                if (element._hideInfoBox) element._hideInfoBox();
+            } else {
+                if (element._showInfoBox) element._showInfoBox();
+            }
         }
     }, { passive: false });
 
