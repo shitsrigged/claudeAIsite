@@ -153,6 +153,9 @@ function createGif(gifData, container) {
     gifDiv.appendChild(infoBox);
     container.appendChild(gifDiv);
 
+    // Make the gif draggable
+    makeDraggable(gifDiv);
+
     let hideTimeout = null;
     let isPinned = false;
 
@@ -196,77 +199,78 @@ function createGif(gifData, container) {
 // Drag functionality
 function makeDraggable(element) {
     let isDragging = false;
-    let wasDragging = false;
-    let currentX;
-    let currentY;
-    let initialX;
-    let initialY;
-    let xOffset = 0;
-    let yOffset = 0;
+    let startX;
+    let startY;
+    let startLeft;
+    let startTop;
 
     element.addEventListener('mousedown', dragStart);
-    element.addEventListener('touchstart', dragStart);
-
-    document.addEventListener('mousemove', drag);
-    document.addEventListener('touchmove', drag);
-
-    document.addEventListener('mouseup', dragEnd);
-    document.addEventListener('touchend', dragEnd);
+    element.addEventListener('touchstart', dragStart, { passive: false });
 
     function dragStart(e) {
-        if (e.type === 'touchstart') {
-            initialX = e.touches[0].clientX - xOffset;
-            initialY = e.touches[0].clientY - yOffset;
-        } else {
-            initialX = e.clientX - xOffset;
-            initialY = e.clientY - yOffset;
+        // Don't start drag if clicking on a link or button
+        if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON') {
+            return;
         }
 
-        if (e.target === element || element.contains(e.target)) {
-            isDragging = true;
-            wasDragging = false;
-            element.style.zIndex = 100;
+        isDragging = true;
+
+        // Store original z-index and boost it while dragging
+        element.dataset.originalZIndex = element.style.zIndex;
+        element.style.zIndex = 9998;
+
+        startLeft = parseFloat(element.style.left) || 0;
+        startTop = parseFloat(element.style.top) || 0;
+
+        if (e.type === 'touchstart') {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        } else {
+            startX = e.clientX;
+            startY = e.clientY;
+            e.preventDefault();
         }
+
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('touchmove', drag, { passive: false });
+        document.addEventListener('mouseup', dragEnd);
+        document.addEventListener('touchend', dragEnd);
     }
 
     function drag(e) {
-        if (isDragging) {
-            e.preventDefault();
-            wasDragging = true;
+        if (!isDragging) return;
 
-            if (e.type === 'touchmove') {
-                currentX = e.touches[0].clientX - initialX;
-                currentY = e.touches[0].clientY - initialY;
-            } else {
-                currentX = e.clientX - initialX;
-                currentY = e.clientY - initialY;
-            }
+        e.preventDefault();
 
-            xOffset = currentX;
-            yOffset = currentY;
-
-            const currentLeft = parseFloat(element.style.left) || 0;
-            const currentTop = parseFloat(element.style.top) || 0;
-
-            element.style.left = (currentLeft + currentX - (xOffset - currentX)) + 'px';
-            element.style.top = (currentTop + currentY - (yOffset - currentY)) + 'px';
+        let clientX, clientY;
+        if (e.type === 'touchmove') {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
         }
+
+        const deltaX = clientX - startX;
+        const deltaY = clientY - startY;
+
+        element.style.left = (startLeft + deltaX) + 'px';
+        element.style.top = (startTop + deltaY) + 'px';
     }
 
     function dragEnd(e) {
-        if (isDragging) {
-            initialX = currentX;
-            initialY = currentY;
-            isDragging = false;
+        if (!isDragging) return;
 
-            // Reset wasDragging after a short delay to allow click handler to check it
-            setTimeout(() => {
-                wasDragging = false;
-            }, 10);
-        }
+        isDragging = false;
+
+        // Restore original z-index
+        element.style.zIndex = element.dataset.originalZIndex || getRandomZIndex();
+
+        document.removeEventListener('mousemove', drag);
+        document.removeEventListener('touchmove', drag);
+        document.removeEventListener('mouseup', dragEnd);
+        document.removeEventListener('touchend', dragEnd);
     }
-
-    return { get wasDragging() { return wasDragging; } };
 }
 
 // Fetch gif data from Google Sheets
@@ -540,6 +544,43 @@ function setupScrollSectionHovers() {
     });
 }
 
+// Cursor trail effect (desktop only)
+function setupCursorTrail() {
+    // Only run on desktop
+    if (window.innerWidth <= 768) return;
+
+    let lastTrailTime = 0;
+    const trailDelay = 20; // milliseconds between trail elements (tighter spacing)
+    let hueRotation = 0; // For rainbow effect
+
+    document.addEventListener('mousemove', (e) => {
+        const now = Date.now();
+
+        // Throttle trail creation
+        if (now - lastTrailTime < trailDelay) return;
+        lastTrailTime = now;
+
+        // Create trail element
+        const trail = document.createElement('div');
+        trail.className = 'cursor-trail';
+        trail.style.left = e.pageX + 'px';
+        trail.style.top = e.pageY + 'px';
+
+        // Apply rainbow effect: sepia adds color, saturate intensifies, hue-rotate cycles through rainbow
+        trail.style.filter = `invert(1) sepia(1) saturate(5) hue-rotate(${hueRotation}deg)`;
+
+        // Increment hue for next trail element (cycle through rainbow)
+        hueRotation = (hueRotation + 30) % 360;
+
+        document.body.appendChild(trail);
+
+        // Remove trail element after animation completes
+        setTimeout(() => {
+            trail.remove();
+        }, 600);
+    });
+}
+
 // Initialize when page loads
 window.addEventListener('load', async () => {
     await loadGifData();
@@ -547,6 +588,7 @@ window.addEventListener('load', async () => {
     setupNavigation();
     loadScrollingSections();
     setupScrollSectionHovers();
+    setupCursorTrail();
 });
 
 // Optionally refresh positions on window resize
