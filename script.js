@@ -1,22 +1,3 @@
-// Debug logging for mobile
-function debugLog(message) {
-    console.log(message);
-    const debugPanel = document.getElementById('debug-panel');
-    if (debugPanel && window.innerWidth <= 768) {
-        const entry = document.createElement('div');
-        entry.className = 'log-entry';
-        const time = new Date().toLocaleTimeString();
-        entry.textContent = `[${time}] ${message}`;
-        debugPanel.appendChild(entry);
-        debugPanel.scrollTop = debugPanel.scrollHeight;
-
-        // Keep only last 20 entries
-        while (debugPanel.children.length > 20) {
-            debugPanel.removeChild(debugPanel.firstChild);
-        }
-    }
-}
-
 // Google Sheets URL - Replace with your published sheet URL
 const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfknahyT_elgMF_uoR--PmOmFjjAf_JDcJzjg9ygFjhsAi6CjAGDr1zLAJ6QKWTRwZVLE1yctGqrsr/pub?output=csv';
 
@@ -192,7 +173,6 @@ function createGif(gifData, container) {
     }
 
     function showInfoBox() {
-        debugLog('Showing info box and starting timer');
         clearInfoBoxTimeout();
         infoBox.classList.add('active');
         infoBox.classList.remove('dither-fade');
@@ -206,7 +186,6 @@ function createGif(gifData, container) {
     }
 
     function hideInfoBox() {
-        debugLog('Hiding info box');
         clearInfoBoxTimeout();
         infoBox.classList.add('dither-fade');
         setTimeout(() => {
@@ -240,11 +219,8 @@ function createGif(gifData, container) {
 
         // Ignore clicks that came right after touch events (ghost clicks)
         if (gifDiv._justTouched) {
-            debugLog('❌ GHOST CLICK BLOCKED');
             return; // Don't reset the flag here - let the timeout handle it
         }
-
-        debugLog('Click event, active=' + infoBox.classList.contains('active'));
 
         // Toggle: if active, hide it; if not active, show it
         if (infoBox.classList.contains('active')) {
@@ -397,31 +373,24 @@ function makeDraggable(element) {
         e.preventDefault(); // Prevent ghost click
         e.stopPropagation();
 
-        debugLog('Touch end, moved=' + hasMoved);
-
         isDragging = false;
         element.classList.remove('dragging');
         element.style.zIndex = element.dataset.originalZIndex || getRandomZIndex();
 
         // Quick tap = show info (only if we didn't drag)
         if (!hasMoved) {
-            debugLog('👆 TAP detected');
-
             // Set flag FIRST to block any ghost click event
             element._justTouched = true;
             setTimeout(() => {
                 element._justTouched = false;
-                debugLog('🔓 Flag cleared');
             }, 800); // Longer timeout to catch all ghost clicks
 
             // Small delay to ensure flag is set before any ghost click
             setTimeout(() => {
                 // Toggle info box directly (no synthetic click)
                 if (element._infoBox && element._infoBox.classList.contains('active')) {
-                    debugLog('➡️ Hiding on tap');
                     if (element._hideInfoBox) element._hideInfoBox();
                 } else {
-                    debugLog('➡️ Showing on tap');
                     if (element._showInfoBox) element._showInfoBox();
                 }
             }, 0);
@@ -683,25 +652,63 @@ function loadScrollingSections() {
     }
 }
 
-// Random color on hover/tap for scroll sections
+// Audio context for piano notes
+let audioContext = null;
+
+function initAudioContext() {
+    if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+}
+
+function playPianoNote(frequency, duration = 0.3) {
+    initAudioContext();
+
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.type = 'sine';
+    oscillator.frequency.value = frequency;
+
+    // ADSR envelope for piano-like sound
+    const now = audioContext.currentTime;
+    gainNode.gain.setValueAtTime(0, now);
+    gainNode.gain.linearRampToValueAtTime(0.3, now + 0.01); // Attack
+    gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration); // Decay/Release
+
+    oscillator.start(now);
+    oscillator.stop(now + duration);
+}
+
+// Random color on hover/tap for scroll sections with piano notes
 function setupScrollSectionHovers() {
     const scrollSections = document.querySelectorAll('.scroll-section');
 
-    scrollSections.forEach(section => {
+    // Melodic scale notes: C5, E5, G5 (C major triad)
+    const notes = [523.25, 659.25, 783.99];
+
+    scrollSections.forEach((section, index) => {
+        const noteFrequency = notes[index % notes.length];
+
         // Desktop: hover
         section.addEventListener('mouseenter', () => {
             const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
             section.style.backgroundColor = randomColor;
+            playPianoNote(noteFrequency);
         });
 
         section.addEventListener('mouseleave', () => {
             section.style.backgroundColor = 'white';
         });
 
-        // Mobile: tap to change color
+        // Mobile: tap to change color and play note
         section.addEventListener('touchstart', (e) => {
             const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
             section.style.backgroundColor = randomColor;
+            playPianoNote(noteFrequency);
 
             // Reset to white after 2 seconds
             setTimeout(() => {
