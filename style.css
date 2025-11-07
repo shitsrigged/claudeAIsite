@@ -65,15 +65,24 @@ nav {
     #hover-video {
         display: block !important;
         visibility: visible !important;
-        top: 50px;
-        left: 50%;
-        right: auto;
-        transform: translateX(-50%);
-        width: 120px !important;
-        max-width: 120px !important;
-        z-index: 999 !important;
-        mix-blend-mode: normal;
+        position: fixed !important;
+        top: 60px !important;
+        left: 50% !important;
+        right: auto !important;
+        transform: translateX(-50%) !important;
+        width: 100px !important;
+        max-width: 100px !important;
+        height: auto !important;
+        z-index: 99999 !important;
+        mix-blend-mode: normal !important;
         opacity: 1 !important;
+        background: red !important;
+        border: 3px solid yellow !important;
+        pointer-events: auto !important;
+    }
+
+    nav {
+        z-index: 100000 !important;
     }
 }
 
