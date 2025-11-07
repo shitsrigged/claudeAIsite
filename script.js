@@ -119,8 +119,8 @@ function createGif(gifData, container) {
     gifDiv._floatPhase = Math.random() * Math.PI * 2; // Random starting phase
     gifDiv._floatSpeedX = 0.0005 + Math.random() * 0.001; // Random speed
     gifDiv._floatSpeedY = 0.0008 + Math.random() * 0.001;
-    gifDiv._floatAmplitudeX = 2 + Math.random() * 3; // 2-5px horizontal movement
-    gifDiv._floatAmplitudeY = 3 + Math.random() * 5; // 3-8px vertical movement
+    gifDiv._floatAmplitudeX = (2 + Math.random() * 3) * 1.15; // 2.3-5.75px horizontal movement (15% increase)
+    gifDiv._floatAmplitudeY = (3 + Math.random() * 5) * 1.15; // 3.45-9.2px vertical movement (15% increase)
     gifDiv._isDragging = false;
 
     const img = document.createElement('img');
@@ -514,94 +514,301 @@ async function loadGifData() {
 }
 
 function createLogo(container) {
-    const size = getRandomSize();
-    const position = getRandomPosition();
+    console.log('🎱 Creating 3D logo sphere...');
 
-    const logoDiv = document.createElement('div');
-    logoDiv.className = 'gif-item logo-item';
-    logoDiv.style.left = position.x + 'px';
-    logoDiv.style.top = position.y + 'px';
-    logoDiv.style.width = size + 'px';
-    logoDiv.style.height = size + 'px';
-    logoDiv.style.zIndex = 9999; // Always on top
+    // Initialize Three.js scene
+    threeScene = new THREE.Scene();
 
-    const img = document.createElement('img');
-    img.src = 'gp logo 2.png';
-    img.alt = 'Gentle People Logo';
+    // Set up camera - orthographic for 2D-like rendering
+    const aspect = window.innerWidth / window.innerHeight;
+    threeCamera = new THREE.OrthographicCamera(
+        -window.innerWidth / 2, window.innerWidth / 2,
+        window.innerHeight / 2, -window.innerHeight / 2,
+        0.1, 1000
+    );
+    threeCamera.position.z = 500;
 
-    // Prevent iOS context menu
-    logoDiv.addEventListener('contextmenu', (e) => e.preventDefault());
-    img.addEventListener('contextmenu', (e) => e.preventDefault());
+    // Create renderer
+    threeRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    threeRenderer.setSize(window.innerWidth, window.innerHeight);
+    threeRenderer.domElement.style.position = 'fixed';
+    threeRenderer.domElement.style.top = '0';
+    threeRenderer.domElement.style.left = '0';
+    threeRenderer.domElement.style.pointerEvents = 'none'; // Don't block interactions with GIFs
+    threeRenderer.domElement.style.zIndex = '9999';
+    document.body.appendChild(threeRenderer.domElement);
+    console.log('✅ Three.js renderer created');
 
-    logoDiv.appendChild(img);
-    container.appendChild(logoDiv);
+    // Create sphere with logo texture
+    const size = 200; // Initial size - larger for visibility
+    const geometry = new THREE.SphereGeometry(size / 2, 64, 64); // Higher resolution for better texture
 
-    // Animate the logo
-    animateLogo(logoDiv, size);
-}
+    // Load logo texture synchronously
+    const textureLoader = new THREE.TextureLoader();
+    logoTexture = textureLoader.load(
+        'gp logo 2.png',
+        (texture) => {
+            console.log('✅ Logo texture loaded successfully');
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(1, 1); // Single logo wrapping around sphere
+            texture.offset.set(0, 0); // No offset needed
+            // Update all materials with the loaded texture
+            logoSphere.userData.materials.forEach(mat => {
+                mat.map = texture;
+                mat.color.setHex(0xffffff); // Set to white to show texture properly
+                mat.needsUpdate = true;
+            });
+            logoSphere.material.map = texture;
+            logoSphere.material.color.setHex(0xffffff); // Set current material to white
+            logoSphere.material.needsUpdate = true;
+            console.log('✅ Texture applied with 1 logo');
+        },
+        (progress) => {
+            console.log('Loading texture:', (progress.loaded / progress.total * 100).toFixed(0) + '%');
+        },
+        (error) => {
+            console.error('❌ Error loading logo texture:', error);
+        }
+    );
 
-function animateLogo(logoElement, initialSize) {
-    let x = parseFloat(logoElement.style.left);
-    let y = parseFloat(logoElement.style.top);
-    let dx = (Math.random() - 0.5) * 2; // Random X velocity
-    let dy = (Math.random() - 0.5) * 2; // Random Y velocity
-    let size = initialSize;
-    const speed = 0.5;
-
-    // Array of random CSS filter effects
-    const effects = [
-        'none',
-        'invert(1)',
-        'hue-rotate(90deg)',
-        'hue-rotate(180deg)',
-        'hue-rotate(270deg)',
-        'saturate(3)',
-        'contrast(2)',
-        'brightness(1.5)',
-        'sepia(1)',
-        'grayscale(1)'
+    // Array of different materials with softer, matte appearance
+    const materials = [
+        new THREE.MeshLambertMaterial({
+            map: logoTexture,
+            color: 0xffffff // White to show texture
+        }),
+        new THREE.MeshStandardMaterial({
+            map: logoTexture,
+            color: 0xffffff,
+            roughness: 0.9, // Very rough for matte appearance
+            metalness: 0.0  // No metallic shine
+        }),
+        new THREE.MeshPhongMaterial({
+            map: logoTexture,
+            color: 0xffffff,
+            shininess: 5, // Very low shininess for soft appearance
+            specular: 0x111111 // Minimal specular highlight
+        }),
+        new THREE.MeshToonMaterial({
+            map: logoTexture,
+            color: 0xffffff // Cartoon shading for flat look
+        })
     ];
 
+    logoSphere = new THREE.Mesh(geometry, materials[0]);
+    logoSphere.userData.currentMaterialIndex = 0;
+    logoSphere.userData.materials = materials;
+    logoSphere.userData.size = size;
+
+    // Position sphere at center initially for debugging
+    logoSphere.position.x = 0;
+    logoSphere.position.y = 0;
+    logoSphere.position.z = 0;
+
+    console.log('Sphere position:', logoSphere.position);
+    console.log('Sphere scale:', logoSphere.scale);
+
+    threeScene.add(logoSphere);
+
+    // Create shadow blob underneath sphere using canvas texture for better visibility
+    const shadowSize = size * 0.8;
+
+    // Create a canvas with radial gradient for soft shadow
+    const shadowCanvas = document.createElement('canvas');
+    shadowCanvas.width = 128;
+    shadowCanvas.height = 128;
+    const ctx = shadowCanvas.getContext('2d');
+    const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gradient.addColorStop(0, 'rgba(0, 0, 0, 0.42)'); // Reduced from 0.6 (30% reduction)
+    gradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.21)'); // Reduced from 0.3
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 128, 128);
+
+    const shadowTexture = new THREE.CanvasTexture(shadowCanvas);
+    const shadowMaterial = new THREE.SpriteMaterial({
+        map: shadowTexture,
+        transparent: true,
+        opacity: 0.56, // Reduced from 0.8 (30% reduction)
+        depthTest: false,
+        depthWrite: false
+    });
+
+    const shadowBlob = new THREE.Sprite(shadowMaterial);
+    shadowBlob.scale.set(shadowSize, shadowSize, 1);
+    shadowBlob.position.x = 0;
+    shadowBlob.position.y = -size / 2 - 20;
+    shadowBlob.position.z = -100; // Behind sphere
+    threeScene.add(shadowBlob);
+    logoSphere.userData.shadowBlob = shadowBlob;
+    logoSphere.userData.shadowSize = shadowSize;
+    console.log('✅ Shadow sprite created at position:', shadowBlob.position);
+
+    // Add softer lighting for 3D effect - 20% less intense
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // Was 0.5
+    threeScene.add(ambientLight);
+
+    // Main directional light from top-right - 20% less intense
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.64); // Was 0.8
+    directionalLight.position.set(300, 300, 400);
+    threeScene.add(directionalLight);
+    logoSphere.userData.mainLight = directionalLight; // Store for shadow calculations
+
+    // Fill light from the left - 20% less intense
+    const fillLight = new THREE.DirectionalLight(0x6688ff, 0.16); // Was 0.2
+    fillLight.position.set(-300, 100, 300);
+    threeScene.add(fillLight);
+
+    // Soft rim light from behind - 20% less intense
+    const rimLight = new THREE.DirectionalLight(0xff8844, 0.24); // Was 0.3
+    rimLight.position.set(0, -200, -200);
+    threeScene.add(rimLight);
+
+    // Add softer point light that moves with the sphere - 20% less intense
+    const pointLight = new THREE.PointLight(0xffffff, 0.24, 500); // Was 0.3
+    pointLight.position.set(0, 150, 150);
+    threeScene.add(pointLight);
+    logoSphere.userData.pointLight = pointLight;
+
+    // Store physics data
+    logoSphere.userData.dx = (Math.random() - 0.5) * 4;
+    logoSphere.userData.dy = (Math.random() - 0.5) * 4;
+    logoSphere.userData.rotationX = 0;
+    logoSphere.userData.rotationY = 0;
+
+    console.log('Initial velocity:', logoSphere.userData.dx, logoSphere.userData.dy);
+
+    // Animate the logo
+    animateLogo();
+}
+
+function animateLogo() {
+    if (!logoSphere || !threeRenderer || !threeCamera) {
+        console.error('❌ Missing Three.js components:', {
+            logoSphere: !!logoSphere,
+            threeRenderer: !!threeRenderer,
+            threeCamera: !!threeCamera
+        });
+        return;
+    }
+
+    console.log('🎬 Starting logo animation...');
+
+    const speed = 0.5;
+    const containerHeight = window.innerHeight - 120; // Account for bottom sections
+    const containerWidth = window.innerWidth;
+    let frameCount = 0;
+
     function animate() {
-        const containerHeight = window.innerHeight - 120; // Account for bottom sections
-        const containerWidth = window.innerWidth;
+        frameCount++;
+        if (frameCount === 1) {
+            console.log('✅ First animation frame rendered');
+            console.log('Sphere visible:', logoSphere.visible);
+            console.log('Sphere material:', logoSphere.material.type);
+            console.log('Camera position:', threeCamera.position);
+        }
+        if (frameCount % 60 === 0) {
+            console.log('Frame', frameCount, '- Sphere pos:', logoSphere.position.x.toFixed(2), logoSphere.position.y.toFixed(2));
+        }
+        // Get current position in screen space
+        let x = logoSphere.position.x + window.innerWidth / 2;
+        let y = -logoSphere.position.y + window.innerHeight / 2;
+        const size = logoSphere.userData.size;
 
-        x += dx * speed;
-        y += dy * speed;
+        // Update position
+        x += logoSphere.userData.dx * speed;
+        y += logoSphere.userData.dy * speed;
 
-        // Bounce off edges with highly random direction, size, and effect
+        // Bounce off edges with random direction, material and color changes (no size change)
         if (x <= 0 || x >= containerWidth - size) {
-            dx = (Math.random() * 6) - 3; // Random between -3 and 3
+            logoSphere.userData.dx = (Math.random() * 6) - 3; // Random between -3 and 3
             x = Math.max(0, Math.min(x, containerWidth - size));
 
-            // Change size randomly
-            const sizes = [150, 200, 250, 300, 350];
-            size = sizes[Math.floor(Math.random() * sizes.length)];
-            logoElement.style.width = size + 'px';
-            logoElement.style.height = size + 'px';
+            // Change material
+            logoSphere.userData.currentMaterialIndex = (logoSphere.userData.currentMaterialIndex + 1) % logoSphere.userData.materials.length;
+            logoSphere.material = logoSphere.userData.materials[logoSphere.userData.currentMaterialIndex];
 
-            // Apply random visual effect
-            const randomEffect = effects[Math.floor(Math.random() * effects.length)];
-            logoElement.querySelector('img').style.filter = randomEffect;
+            // Change logo color with random hue rotation
+            logoSphere.material.color.setHSL(Math.random(), 0.5 + Math.random() * 0.5, 0.5 + Math.random() * 0.3);
         }
 
         if (y <= 0 || y >= containerHeight - size) {
-            dy = (Math.random() * 6) - 3; // Random between -3 and 3
+            logoSphere.userData.dy = (Math.random() * 6) - 3; // Random between -3 and 3
             y = Math.max(0, Math.min(y, containerHeight - size));
 
-            // Change size randomly
-            const sizes = [150, 200, 250, 300, 350];
-            size = sizes[Math.floor(Math.random() * sizes.length)];
-            logoElement.style.width = size + 'px';
-            logoElement.style.height = size + 'px';
+            // Change material
+            logoSphere.userData.currentMaterialIndex = (logoSphere.userData.currentMaterialIndex + 1) % logoSphere.userData.materials.length;
+            logoSphere.material = logoSphere.userData.materials[logoSphere.userData.currentMaterialIndex];
 
-            // Apply random visual effect
-            const randomEffect = effects[Math.floor(Math.random() * effects.length)];
-            logoElement.querySelector('img').style.filter = randomEffect;
+            // Change logo color with random hue rotation
+            logoSphere.material.color.setHSL(Math.random(), 0.5 + Math.random() * 0.5, 0.5 + Math.random() * 0.3);
         }
 
-        logoElement.style.left = x + 'px';
-        logoElement.style.top = y + 'px';
+        // Update Three.js position (convert back to centered coordinates)
+        logoSphere.position.x = x - window.innerWidth / 2;
+        logoSphere.position.y = -y + window.innerHeight / 2;
+
+        // Calculate rolling rotation based on velocity and sphere radius
+        // The sphere rotates in the direction it's moving
+        const radius = logoSphere.userData.size / 2;
+        const circumference = 2 * Math.PI * radius;
+
+        // Rotation amount is distance traveled / circumference
+        const distanceX = logoSphere.userData.dx * speed;
+        const distanceY = logoSphere.userData.dy * speed;
+
+        // Rotate around Y axis for horizontal movement (left/right)
+        logoSphere.userData.rotationY += (distanceX / circumference) * (2 * Math.PI);
+
+        // Rotate around X axis for vertical movement (up/down)
+        logoSphere.userData.rotationX -= (distanceY / circumference) * (2 * Math.PI);
+
+        // Apply rotations
+        logoSphere.rotation.x = logoSphere.userData.rotationX;
+        logoSphere.rotation.y = logoSphere.userData.rotationY;
+
+        // Move point light with sphere for dynamic highlights
+        if (logoSphere.userData.pointLight) {
+            logoSphere.userData.pointLight.position.x = logoSphere.position.x + 100;
+            logoSphere.userData.pointLight.position.y = logoSphere.position.y + 100;
+            logoSphere.userData.pointLight.position.z = 150;
+        }
+
+        // Update shadow sprite to follow sphere and react to light direction
+        if (logoSphere.userData.shadowBlob && logoSphere.userData.mainLight) {
+            const shadowBlob = logoSphere.userData.shadowBlob;
+            const light = logoSphere.userData.mainLight;
+
+            // Calculate shadow offset based on light direction
+            // Light is at fixed position (300, 300, 400)
+            const lightToSphere = new THREE.Vector3(
+                logoSphere.position.x - light.position.x,
+                logoSphere.position.y - light.position.y,
+                -light.position.z // Z distance from light
+            );
+
+            // Project shadow onto ground plane (XY plane at Z=-100)
+            // Shadow is cast away from light source
+            const shadowScale = 0.8; // How far shadow extends from ball
+            const shadowOffsetX = (lightToSphere.x / lightToSphere.length()) * 30 * shadowScale;
+            const shadowOffsetY = (lightToSphere.y / lightToSphere.length()) * 15 * shadowScale;
+
+            // Position shadow: follow ball position + offset based on light
+            shadowBlob.position.x = logoSphere.position.x + shadowOffsetX;
+            shadowBlob.position.y = logoSphere.position.y - size / 2 - 5; // Very close under sphere
+
+            // Keep shadow behind sphere in Z
+            shadowBlob.position.z = -100;
+
+            // Log occasionally for debugging
+            if (frameCount % 120 === 0) {
+                console.log('Shadow pos:', shadowBlob.position.x.toFixed(2), shadowBlob.position.y.toFixed(2), 'Ball pos:', logoSphere.position.x.toFixed(2), logoSphere.position.y.toFixed(2));
+            }
+        }
+
+        // Render scene
+        threeRenderer.render(threeScene, threeCamera);
 
         requestAnimationFrame(animate);
     }
@@ -731,6 +938,13 @@ function loadScrollingSections() {
         });
     }
 }
+
+// Three.js scene for 3D logo sphere
+let threeScene = null;
+let threeCamera = null;
+let threeRenderer = null;
+let logoSphere = null;
+let logoTexture = null;
 
 // Audio context for piano notes
 let audioContext = null;
@@ -937,7 +1151,7 @@ function startFloatingAnimation() {
             const offsetY2 = Math.cos(time * gif._floatSpeedY * 0.5 + gif._floatPhase * 1.7) * (gif._floatAmplitudeY * 0.6);
 
             // Apply subtle pulsing scale
-            const scale = 1 + Math.sin(time * gif._floatSpeedY * 0.3 + gif._floatPhase) * 0.01; // ±1% size change
+            const scale = 1 + Math.sin(time * gif._floatSpeedY * 0.3 + gif._floatPhase) * 0.0115; // ±1.15% size change (15% increase)
 
             // Apply the floating offset to base position
             gif.style.left = (gif._baseX + offsetX + offsetX2) + 'px';
@@ -959,6 +1173,7 @@ window.addEventListener('load', async () => {
     loadScrollingSections();
     setupScrollSectionHovers();
     setupCursorTrail();
+    setupHoverVideo();
 
     // Start floating animation
     startFloatingAnimation();
@@ -982,9 +1197,35 @@ window.addEventListener('load', async () => {
     document.addEventListener('keydown', resumeAudio, { once: true });
 });
 
+// Setup video hover functionality
+function setupHoverVideo() {
+    const video = document.getElementById('hover-video');
+    if (!video) return;
+
+    // Play video on mouse enter
+    video.addEventListener('mouseenter', () => {
+        video.play();
+    });
+
+    // Pause video on mouse leave (stays at current position)
+    video.addEventListener('mouseleave', () => {
+        video.pause();
+    });
+}
+
 // Optionally refresh positions on window resize
 window.addEventListener('resize', () => {
     const container = document.getElementById('gif-container');
     container.innerHTML = '';
     initializeGifs();
+
+    // Update Three.js renderer and camera
+    if (threeRenderer && threeCamera) {
+        threeRenderer.setSize(window.innerWidth, window.innerHeight);
+        threeCamera.left = -window.innerWidth / 2;
+        threeCamera.right = window.innerWidth / 2;
+        threeCamera.top = window.innerHeight / 2;
+        threeCamera.bottom = -window.innerHeight / 2;
+        threeCamera.updateProjectionMatrix();
+    }
 });
