@@ -671,20 +671,15 @@ function createLogo(container) {
     threeScene.add(pointLight);
     logoSphere.userData.pointLight = pointLight;
 
-    // Store physics data - mobile has no preset motion, desktop has bouncing
+    // Store physics data - same bouncing motion for all devices
     const isMobile = window.innerWidth <= 768;
-    logoSphere.userData.dx = isMobile ? 0 : (Math.random() - 0.5) * 4;
-    logoSphere.userData.dy = isMobile ? 0 : (Math.random() - 0.5) * 4;
+    logoSphere.userData.dx = (Math.random() - 0.5) * 4;
+    logoSphere.userData.dy = (Math.random() - 0.5) * 4;
     logoSphere.userData.rotationX = 0;
     logoSphere.userData.rotationY = 0;
-    logoSphere.userData.gyroX = 0;
-    logoSphere.userData.gyroY = 0;
     logoSphere.userData.isMobile = isMobile;
 
     console.log('Initial velocity:', logoSphere.userData.dx, logoSphere.userData.dy, 'Mobile:', isMobile);
-
-    // Set up gyroscope for mobile
-    setupGyroscope();
 
     // Set up touch flick controls for mobile
     if (isMobile) {
@@ -734,34 +729,14 @@ function setupBallTouchControls() {
         const deltaTime = Math.max(touchEndTime - touchStartTime, 1); // Avoid division by zero
 
         // Calculate velocity (pixels per millisecond, then scale it)
-        const velocityX = (deltaX / deltaTime) * 10; // Scale up for more dramatic effect
-        const velocityY = (deltaY / deltaTime) * 10;
+        const velocityX = (deltaX / deltaTime) * 0.5; // More reasonable scale for flicking
+        const velocityY = (deltaY / deltaTime) * 0.5;
 
-        // Apply velocity to ball - use gyro storage for mobile
-        logoSphere.userData.gyroX = velocityX;
-        logoSphere.userData.gyroY = velocityY;
+        // Apply velocity to ball's preset motion
+        logoSphere.userData.dx = velocityX;
+        logoSphere.userData.dy = velocityY;
 
         console.log('🚀 Flick velocity:', velocityX.toFixed(2), velocityY.toFixed(2), 'Distance:', deltaX.toFixed(0), deltaY.toFixed(0), 'Time:', deltaTime + 'ms');
-
-        // Gradually reduce the flick velocity over time (friction)
-        const applyFriction = () => {
-            if (!logoSphere) return;
-
-            logoSphere.userData.gyroX *= 0.95; // 5% friction
-            logoSphere.userData.gyroY *= 0.95;
-
-            // Stop applying friction when velocity is very small
-            if (Math.abs(logoSphere.userData.gyroX) > 0.1 || Math.abs(logoSphere.userData.gyroY) > 0.1) {
-                setTimeout(applyFriction, 50);
-            } else {
-                // Reset to zero when negligible
-                logoSphere.userData.gyroX = 0;
-                logoSphere.userData.gyroY = 0;
-                console.log('🛑 Ball stopped');
-            }
-        };
-
-        applyFriction();
 
         isTouchingBall = false;
     }, { passive: true });
@@ -876,18 +851,9 @@ function animateLogo() {
         let y = -logoSphere.position.y + window.innerHeight / 2;
         const size = logoSphere.userData.size;
 
-        // Mobile: gyro-only control. Desktop: preset bouncing only (no gyro)
-        let effectiveDx, effectiveDy;
-        if (logoSphere.userData.isMobile) {
-            // Mobile: ball controlled entirely by device tilt (no preset velocity)
-            const gyroScale = 1.5; // Amplify gyro for more responsive control
-            effectiveDx = logoSphere.userData.gyroX * gyroScale;
-            effectiveDy = logoSphere.userData.gyroY * gyroScale;
-        } else {
-            // Desktop: use preset bouncing velocity (no gyro influence)
-            effectiveDx = logoSphere.userData.dx;
-            effectiveDy = logoSphere.userData.dy;
-        }
+        // Use preset bouncing velocity for all devices
+        const effectiveDx = logoSphere.userData.dx;
+        const effectiveDy = logoSphere.userData.dy;
 
         // Update position
         x += effectiveDx * speed;

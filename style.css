@@ -64,13 +64,16 @@ nav {
 @media (max-width: 768px) {
     #hover-video {
         display: block !important;
-        top: 70px;
+        visibility: visible !important;
+        top: 50px;
         left: 50%;
         right: auto;
         transform: translateX(-50%);
-        width: 150px !important;
-        max-width: 150px !important;
-        z-index: 10000 !important;
+        width: 120px !important;
+        max-width: 120px !important;
+        z-index: 999 !important;
+        mix-blend-mode: normal;
+        opacity: 1 !important;
     }
 }
 
