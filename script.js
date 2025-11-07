@@ -686,52 +686,157 @@ function createLogo(container) {
     // Set up gyroscope for mobile
     setupGyroscope();
 
+    // Set up touch flick controls for mobile
+    if (isMobile) {
+        setupBallTouchControls();
+    }
+
     // Animate the logo
     animateLogo();
+}
+
+// Touch flick controls for the ball
+function setupBallTouchControls() {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+    let isTouchingBall = false;
+
+    // Listen on the entire document for touch events
+    document.addEventListener('touchstart', (e) => {
+        if (!logoSphere) return;
+
+        const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        touchStartTime = Date.now();
+        isTouchingBall = true;
+
+        console.log('👆 Touch start:', touchStartX, touchStartY);
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+        if (!isTouchingBall) return;
+        // Just track that we're moving
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        if (!logoSphere || !isTouchingBall) return;
+
+        const touch = e.changedTouches[0];
+        const touchEndX = touch.clientX;
+        const touchEndY = touch.clientY;
+        const touchEndTime = Date.now();
+
+        // Calculate swipe distance and time
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = touchEndY - touchStartY;
+        const deltaTime = Math.max(touchEndTime - touchStartTime, 1); // Avoid division by zero
+
+        // Calculate velocity (pixels per millisecond, then scale it)
+        const velocityX = (deltaX / deltaTime) * 10; // Scale up for more dramatic effect
+        const velocityY = (deltaY / deltaTime) * 10;
+
+        // Apply velocity to ball - use gyro storage for mobile
+        logoSphere.userData.gyroX = velocityX;
+        logoSphere.userData.gyroY = velocityY;
+
+        console.log('🚀 Flick velocity:', velocityX.toFixed(2), velocityY.toFixed(2), 'Distance:', deltaX.toFixed(0), deltaY.toFixed(0), 'Time:', deltaTime + 'ms');
+
+        // Gradually reduce the flick velocity over time (friction)
+        const applyFriction = () => {
+            if (!logoSphere) return;
+
+            logoSphere.userData.gyroX *= 0.95; // 5% friction
+            logoSphere.userData.gyroY *= 0.95;
+
+            // Stop applying friction when velocity is very small
+            if (Math.abs(logoSphere.userData.gyroX) > 0.1 || Math.abs(logoSphere.userData.gyroY) > 0.1) {
+                setTimeout(applyFriction, 50);
+            } else {
+                // Reset to zero when negligible
+                logoSphere.userData.gyroX = 0;
+                logoSphere.userData.gyroY = 0;
+                console.log('🛑 Ball stopped');
+            }
+        };
+
+        applyFriction();
+
+        isTouchingBall = false;
+    }, { passive: true });
+
+    console.log('✅ Ball touch flick controls enabled');
 }
 
 // Setup gyroscope/accelerometer for mobile devices
 function setupGyroscope() {
     // Check if device motion is supported
     if (!window.DeviceOrientationEvent && !window.DeviceMotionEvent) {
-        console.log('Device motion not supported');
+        console.log('❌ Device motion not supported');
         return;
     }
 
+    console.log('📱 Device orientation API detected');
+
     // Request permission for iOS 13+
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        // iOS 13+ requires permission
-        document.addEventListener('click', async () => {
+        console.log('🔒 iOS 13+ detected - permission required');
+
+        // iOS 13+ requires permission - request on any touch
+        const requestPermission = async () => {
             try {
+                console.log('🙋 Requesting gyroscope permission...');
                 const permission = await DeviceOrientationEvent.requestPermission();
+                console.log('📋 Permission result:', permission);
+
                 if (permission === 'granted') {
                     console.log('✅ Gyroscope permission granted');
                     enableGyroscope();
+                } else {
+                    console.log('❌ Gyroscope permission denied');
                 }
             } catch (error) {
                 console.error('❌ Error requesting gyroscope permission:', error);
             }
-        }, { once: true });
+        };
+
+        // Try to request on first touch
+        document.addEventListener('touchstart', requestPermission, { once: true });
+        document.addEventListener('click', requestPermission, { once: true });
     } else {
-        // Non-iOS or older iOS
+        // Non-iOS or older iOS - no permission needed
+        console.log('✅ No permission needed - enabling gyroscope');
         enableGyroscope();
     }
 }
 
 function enableGyroscope() {
+    let eventCount = 0;
+
     // Use device orientation for tilt-based movement
     window.addEventListener('deviceorientation', (event) => {
         if (!logoSphere) return;
+
+        eventCount++;
 
         // beta is front-to-back tilt (-180 to 180)
         // gamma is left-to-right tilt (-90 to 90)
         const beta = event.beta;  // Y tilt
         const gamma = event.gamma; // X tilt
 
+        if (eventCount === 1 || eventCount % 60 === 0) {
+            console.log('🔄 Gyro event:', eventCount, 'beta:', beta, 'gamma:', gamma);
+        }
+
         if (beta !== null && gamma !== null) {
             // Map tilt to velocity (scale it down)
             logoSphere.userData.gyroX = gamma * 0.15;  // Left/right tilt affects X velocity
             logoSphere.userData.gyroY = beta * 0.15;   // Front/back tilt affects Y velocity
+
+            if (eventCount % 60 === 0) {
+                console.log('📍 Applied gyro:', logoSphere.userData.gyroX, logoSphere.userData.gyroY);
+            }
         }
     });
 
