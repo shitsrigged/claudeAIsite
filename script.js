@@ -671,15 +671,17 @@ function createLogo(container) {
     threeScene.add(pointLight);
     logoSphere.userData.pointLight = pointLight;
 
-    // Store physics data
-    logoSphere.userData.dx = (Math.random() - 0.5) * 4;
-    logoSphere.userData.dy = (Math.random() - 0.5) * 4;
+    // Store physics data - mobile has no preset motion, desktop has bouncing
+    const isMobile = window.innerWidth <= 768;
+    logoSphere.userData.dx = isMobile ? 0 : (Math.random() - 0.5) * 4;
+    logoSphere.userData.dy = isMobile ? 0 : (Math.random() - 0.5) * 4;
     logoSphere.userData.rotationX = 0;
     logoSphere.userData.rotationY = 0;
     logoSphere.userData.gyroX = 0;
     logoSphere.userData.gyroY = 0;
+    logoSphere.userData.isMobile = isMobile;
 
-    console.log('Initial velocity:', logoSphere.userData.dx, logoSphere.userData.dy);
+    console.log('Initial velocity:', logoSphere.userData.dx, logoSphere.userData.dy, 'Mobile:', isMobile);
 
     // Set up gyroscope for mobile
     setupGyroscope();
@@ -769,12 +771,20 @@ function animateLogo() {
         let y = -logoSphere.position.y + window.innerHeight / 2;
         const size = logoSphere.userData.size;
 
-        // Apply gyroscope influence if available (mobile)
-        const gyroInfluence = 0.3; // How much gyro affects movement
-        const effectiveDx = logoSphere.userData.dx + (logoSphere.userData.gyroX * gyroInfluence);
-        const effectiveDy = logoSphere.userData.dy + (logoSphere.userData.gyroY * gyroInfluence);
+        // Mobile: gyro-only control. Desktop: preset bouncing only (no gyro)
+        let effectiveDx, effectiveDy;
+        if (logoSphere.userData.isMobile) {
+            // Mobile: ball controlled entirely by device tilt (no preset velocity)
+            const gyroScale = 1.5; // Amplify gyro for more responsive control
+            effectiveDx = logoSphere.userData.gyroX * gyroScale;
+            effectiveDy = logoSphere.userData.gyroY * gyroScale;
+        } else {
+            // Desktop: use preset bouncing velocity (no gyro influence)
+            effectiveDx = logoSphere.userData.dx;
+            effectiveDy = logoSphere.userData.dy;
+        }
 
-        // Update position with gyro-influenced velocity
+        // Update position
         x += effectiveDx * speed;
         y += effectiveDy * speed;
 
