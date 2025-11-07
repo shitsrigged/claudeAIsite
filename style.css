@@ -50,14 +50,24 @@ nav {
 
 #hover-video {
     position: fixed;
-    top: 35px; /* Moved up 25px more */
-    right: -15px; /* Moved right 10px more */
-    width: 173px !important; /* Increased by 5% from 165px */
+    top: 35px;
+    right: -15px;
+    width: 173px !important;
     max-width: 173px !important;
     height: auto !important;
     z-index: 1000;
-    mix-blend-mode: multiply; /* Remove white background */
+    mix-blend-mode: multiply;
     background: transparent;
+}
+
+/* Mobile styles for video */
+@media (max-width: 768px) {
+    #hover-video {
+        top: 60px;
+        right: 10px;
+        width: 120px !important;
+        max-width: 120px !important;
+    }
 }
 
 nav a {

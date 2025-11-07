@@ -676,11 +676,64 @@ function createLogo(container) {
     logoSphere.userData.dy = (Math.random() - 0.5) * 4;
     logoSphere.userData.rotationX = 0;
     logoSphere.userData.rotationY = 0;
+    logoSphere.userData.gyroX = 0;
+    logoSphere.userData.gyroY = 0;
 
     console.log('Initial velocity:', logoSphere.userData.dx, logoSphere.userData.dy);
 
+    // Set up gyroscope for mobile
+    setupGyroscope();
+
     // Animate the logo
     animateLogo();
+}
+
+// Setup gyroscope/accelerometer for mobile devices
+function setupGyroscope() {
+    // Check if device motion is supported
+    if (!window.DeviceOrientationEvent && !window.DeviceMotionEvent) {
+        console.log('Device motion not supported');
+        return;
+    }
+
+    // Request permission for iOS 13+
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        // iOS 13+ requires permission
+        document.addEventListener('click', async () => {
+            try {
+                const permission = await DeviceOrientationEvent.requestPermission();
+                if (permission === 'granted') {
+                    console.log('✅ Gyroscope permission granted');
+                    enableGyroscope();
+                }
+            } catch (error) {
+                console.error('❌ Error requesting gyroscope permission:', error);
+            }
+        }, { once: true });
+    } else {
+        // Non-iOS or older iOS
+        enableGyroscope();
+    }
+}
+
+function enableGyroscope() {
+    // Use device orientation for tilt-based movement
+    window.addEventListener('deviceorientation', (event) => {
+        if (!logoSphere) return;
+
+        // beta is front-to-back tilt (-180 to 180)
+        // gamma is left-to-right tilt (-90 to 90)
+        const beta = event.beta;  // Y tilt
+        const gamma = event.gamma; // X tilt
+
+        if (beta !== null && gamma !== null) {
+            // Map tilt to velocity (scale it down)
+            logoSphere.userData.gyroX = gamma * 0.15;  // Left/right tilt affects X velocity
+            logoSphere.userData.gyroY = beta * 0.15;   // Front/back tilt affects Y velocity
+        }
+    });
+
+    console.log('✅ Gyroscope enabled');
 }
 
 function animateLogo() {
@@ -716,9 +769,14 @@ function animateLogo() {
         let y = -logoSphere.position.y + window.innerHeight / 2;
         const size = logoSphere.userData.size;
 
-        // Update position
-        x += logoSphere.userData.dx * speed;
-        y += logoSphere.userData.dy * speed;
+        // Apply gyroscope influence if available (mobile)
+        const gyroInfluence = 0.3; // How much gyro affects movement
+        const effectiveDx = logoSphere.userData.dx + (logoSphere.userData.gyroX * gyroInfluence);
+        const effectiveDy = logoSphere.userData.dy + (logoSphere.userData.gyroY * gyroInfluence);
+
+        // Update position with gyro-influenced velocity
+        x += effectiveDx * speed;
+        y += effectiveDy * speed;
 
         // Bounce off edges with random direction, material and color changes (no size change)
         if (x <= 0 || x >= containerWidth - size) {
@@ -754,9 +812,9 @@ function animateLogo() {
         const radius = logoSphere.userData.size / 2;
         const circumference = 2 * Math.PI * radius;
 
-        // Rotation amount is distance traveled / circumference
-        const distanceX = logoSphere.userData.dx * speed;
-        const distanceY = logoSphere.userData.dy * speed;
+        // Rotation amount is distance traveled / circumference (using gyro-influenced velocity)
+        const distanceX = effectiveDx * speed;
+        const distanceY = effectiveDy * speed;
 
         // Rotate around Y axis for horizontal movement (left/right)
         logoSphere.userData.rotationY += (distanceX / circumference) * (2 * Math.PI);
@@ -1202,14 +1260,30 @@ function setupHoverVideo() {
     const video = document.getElementById('hover-video');
     if (!video) return;
 
-    // Play video on mouse enter
+    let isPlaying = false;
+
+    // Desktop: Play video on mouse enter
     video.addEventListener('mouseenter', () => {
         video.play();
+        isPlaying = true;
     });
 
-    // Pause video on mouse leave (stays at current position)
+    // Desktop: Pause video on mouse leave (stays at current position)
     video.addEventListener('mouseleave', () => {
         video.pause();
+        isPlaying = false;
+    });
+
+    // Mobile: Toggle play/pause on touch
+    video.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (isPlaying) {
+            video.pause();
+            isPlaying = false;
+        } else {
+            video.play();
+            isPlaying = true;
+        }
     });
 }
 
