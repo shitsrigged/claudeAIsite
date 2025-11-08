@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portfolio</title>
-    <link rel="stylesheet" href="style.css?v=7">
+    <link rel="stylesheet" href="style.css?v=27">
 </head>
 <body>
     <nav>
@@ -17,6 +17,12 @@
         Your browser does not support the video tag.
     </video>
 
+    <!-- Download Button (under reel box, left) -->
+    <button id="download-reel-btn" style="display: none;">DOWNLOAD REEL</button>
+
+    <!-- Reset Button (under reel box, right) -->
+    <button id="reset-reel-btn">RESET</button>
+
     <div id="info-box-about" class="info-box">
         <button class="close-btn">&times;</button>
         <p>Gentle People is a new wave production company founded by music execs, creative directors and producers. We work with anyone and everyone. We specialize in music videos, tour visuals, artist content, lyric videos, and brand integrations.</p>
@@ -28,6 +34,24 @@
     </div>
 
     <div id="gif-container"></div>
+
+    <!-- Reel Builder Box -->
+    <div id="reel-box">
+        <h2>DRAG GIFS HERE TO MAKE REEL</h2>
+        <div id="reel-items"></div>
+    </div>
+
+    <!-- Reel Data Overlay (for mobile) -->
+    <div id="reel-data-overlay">
+        <div id="reel-data-content">
+            <h3>REEL DATA</h3>
+            <div id="reel-data-text"></div>
+            <div class="overlay-buttons">
+                <button class="overlay-btn" id="copy-reel-btn">COPY TO CLIPBOARD</button>
+                <button class="overlay-btn" id="close-overlay-btn">CLOSE</button>
+            </div>
+        </div>
+    </div>
 
     <div class="bottom-sections">
         <div class="scroll-section contact-scroll">
@@ -67,6 +91,6 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="script.js?v=17"></script>
+    <script src="script.js?v=38"></script>
 </body>
 </html>

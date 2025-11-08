@@ -90,9 +90,40 @@ function getRandomPosition() {
     const baseHeight = window.innerHeight - 120; // Account for bottom sections
     const totalHeight = baseHeight * 2; // Always allow 2 screens worth of scrolling
 
-    const x = Math.random() * (window.innerWidth - maxSize) + padding;
-    // Ensure gif doesn't go below the available space by subtracting maxSize from totalHeight
-    const y = Math.random() * (totalHeight - maxSize);
+    // Reel box bounds (centered using transform: translate(-50%, -50%))
+    // Desktop: 200x250px + 10px padding = 220x270px
+    // Mobile: 150x200px + 10px padding = 170x220px
+    const reelBoxWidth = isMobile ? 170 : 220;
+    const reelBoxHeight = isMobile ? 220 : 270;
+    const reelBoxLeft = (window.innerWidth / 2) - (reelBoxWidth / 2);
+    const reelBoxTop = (window.innerHeight / 2) - (reelBoxHeight / 2);
+    const reelBoxRight = reelBoxLeft + reelBoxWidth;
+    const reelBoxBottom = reelBoxTop + reelBoxHeight;
+
+    let x, y;
+    let attempts = 0;
+    const maxAttempts = 50;
+
+    // Keep trying until we find a position that doesn't overlap the reel box
+    do {
+        x = Math.random() * (window.innerWidth - maxSize) + padding;
+        y = Math.random() * (totalHeight - maxSize);
+        attempts++;
+
+        // Check if this position overlaps with reel box
+        const gifRight = x + maxSize;
+        const gifBottom = y + maxSize;
+
+        const overlaps = !(gifRight < reelBoxLeft ||
+                          x > reelBoxRight ||
+                          gifBottom < reelBoxTop ||
+                          y > reelBoxBottom);
+
+        if (!overlaps || attempts >= maxAttempts) {
+            break;
+        }
+    } while (true);
+
     return { x, y };
 }
 
@@ -113,6 +144,12 @@ function createGif(gifData, container) {
     gifDiv.style.height = size + 'px';
     gifDiv.style.zIndex = zIndex;
 
+    // Store gif data for reel builder
+    gifDiv._gifData = gifData;
+
+    // Make draggable for HTML5 drag/drop API
+    gifDiv.draggable = true;
+
     // Store base position for floating animation
     gifDiv._baseX = position.x;
     gifDiv._baseY = position.y;
@@ -122,6 +159,19 @@ function createGif(gifData, container) {
     gifDiv._floatAmplitudeX = (2 + Math.random() * 3) * 1.15; // 2.3-5.75px horizontal movement (15% increase)
     gifDiv._floatAmplitudeY = (3 + Math.random() * 5) * 1.15; // 3.45-9.2px vertical movement (15% increase)
     gifDiv._isDragging = false;
+
+    // Add dragstart event for reel builder
+    gifDiv.addEventListener('dragstart', (e) => {
+        console.log('🎬 DRAGSTART EVENT FIRED for:', gifData.name);
+        e.dataTransfer.setData('application/json', JSON.stringify(gifData));
+        e.dataTransfer.effectAllowed = 'copy';
+        console.log('🎬 Data set in dataTransfer:', gifData);
+    });
+
+    // Add drag event for debugging
+    gifDiv.addEventListener('drag', (e) => {
+        // This fires continuously while dragging
+    });
 
     const img = document.createElement('img');
     img.src = gifData.url;
@@ -224,6 +274,12 @@ function createGif(gifData, container) {
 
     // Click handler (desktop only - blocked after touch events)
     gifDiv.addEventListener('click', (e) => {
+        // Allow clicks on links and buttons to work normally
+        if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' ||
+            e.target.closest('a') || e.target.closest('button')) {
+            return; // Let the link/button work normally
+        }
+
         e.preventDefault();
         e.stopPropagation();
 
@@ -281,6 +337,8 @@ function makeDraggable(element) {
             img.style.width = '100%';
             img.style.height = '100%';
             img.style.objectFit = 'cover';
+            img.style.transform = 'scale(1.5)';
+            img.style.transformOrigin = 'center center';
             trail.appendChild(img);
         }
 
@@ -370,8 +428,41 @@ function makeDraggable(element) {
         element.style.top = (startTop + deltaY) + 'px';
     });
 
-    document.addEventListener('mouseup', () => {
+    document.addEventListener('mouseup', (e) => {
         if (!isDragging) return;
+
+        // Check if GIF overlaps significantly with the reel box
+        const reelBox = document.getElementById('reel-box');
+        if (reelBox && element._gifData) {
+            const reelRect = reelBox.getBoundingClientRect();
+            const gifRect = element.getBoundingClientRect();
+
+            // Calculate overlap
+            const overlapLeft = Math.max(reelRect.left, gifRect.left);
+            const overlapRight = Math.min(reelRect.right, gifRect.right);
+            const overlapTop = Math.max(reelRect.top, gifRect.top);
+            const overlapBottom = Math.min(reelRect.bottom, gifRect.bottom);
+
+            // Check if there's any overlap
+            if (overlapLeft < overlapRight && overlapTop < overlapBottom) {
+                const overlapWidth = overlapRight - overlapLeft;
+                const overlapHeight = overlapBottom - overlapTop;
+                const overlapArea = overlapWidth * overlapHeight;
+
+                const gifArea = gifRect.width * gifRect.height;
+                const overlapPercentage = (overlapArea / gifArea) * 100;
+
+                // If more than 30% of the GIF is over the reel box, add it
+                if (overlapPercentage > 30) {
+                    console.log('🎬 GIF overlaps', overlapPercentage.toFixed(1), '% with reel box!');
+                    // Add to reel
+                    if (window.addToReel) {
+                        window.addToReel(element._gifData);
+                    }
+                }
+            }
+        }
+
         isDragging = false;
         element.classList.remove('dragging');
         element.style.zIndex = element.dataset.originalZIndex || getRandomZIndex();
@@ -386,7 +477,11 @@ function makeDraggable(element) {
     let touchStartTime = 0;
 
     element.addEventListener('touchstart', (e) => {
-        if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON') return;
+        // Check if the touch is on a link or button (or any of their children)
+        if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' ||
+            e.target.closest('a') || e.target.closest('button')) {
+            return;
+        }
 
         touchStartTime = Date.now();
         isDragging = true;
@@ -447,6 +542,38 @@ function makeDraggable(element) {
 
         e.preventDefault(); // Prevent ghost click
         e.stopPropagation();
+
+        // Check if GIF overlaps significantly with the reel box (same as mouse detection)
+        const reelBox = document.getElementById('reel-box');
+        if (reelBox && element._gifData && hasMoved) {
+            const reelRect = reelBox.getBoundingClientRect();
+            const gifRect = element.getBoundingClientRect();
+
+            // Calculate overlap
+            const overlapLeft = Math.max(reelRect.left, gifRect.left);
+            const overlapRight = Math.min(reelRect.right, gifRect.right);
+            const overlapTop = Math.max(reelRect.top, gifRect.top);
+            const overlapBottom = Math.min(reelRect.bottom, gifRect.bottom);
+
+            // Check if there's any overlap
+            if (overlapLeft < overlapRight && overlapTop < overlapBottom) {
+                const overlapWidth = overlapRight - overlapLeft;
+                const overlapHeight = overlapBottom - overlapTop;
+                const overlapArea = overlapWidth * overlapHeight;
+
+                const gifArea = gifRect.width * gifRect.height;
+                const overlapPercentage = (overlapArea / gifArea) * 100;
+
+                // If more than 30% of the GIF is over the reel box, add it
+                if (overlapPercentage > 30) {
+                    console.log('🎬 [TOUCH] GIF overlaps', overlapPercentage.toFixed(1), '% with reel box!');
+                    // Add to reel
+                    if (window.addToReel) {
+                        window.addToReel(element._gifData);
+                    }
+                }
+            }
+        }
 
         isDragging = false;
         element.classList.remove('dragging');
@@ -540,7 +667,9 @@ function createLogo(container) {
     console.log('✅ Three.js renderer created');
 
     // Create sphere with logo texture
-    const size = 200; // Initial size - larger for visibility
+    const isMobile = window.innerWidth <= 768;
+    const baseSize = 200;
+    const size = isMobile ? baseSize * 0.8 : baseSize * 1.2; // 160 on mobile, 240 on desktop
     const geometry = new THREE.SphereGeometry(size / 2, 64, 64); // Higher resolution for better texture
 
     // Load logo texture synchronously
@@ -672,7 +801,6 @@ function createLogo(container) {
     logoSphere.userData.pointLight = pointLight;
 
     // Store physics data - same bouncing motion for all devices
-    const isMobile = window.innerWidth <= 768;
     logoSphere.userData.dx = (Math.random() - 0.5) * 4;
     logoSphere.userData.dy = (Math.random() - 0.5) * 4;
     logoSphere.userData.rotationX = 0;
@@ -1398,4 +1526,341 @@ window.addEventListener('resize', () => {
         threeCamera.bottom = -window.innerHeight / 2;
         threeCamera.updateProjectionMatrix();
     }
+});
+
+// ============ REEL BUILDER FUNCTIONALITY ============
+let reelItems = []; // Store the reel metadata
+
+function setupReelBuilder() {
+    console.log('🎬 Setting up Reel Builder...');
+
+    const reelBox = document.getElementById('reel-box');
+    const reelItemsContainer = document.getElementById('reel-items');
+    const downloadBtn = document.getElementById('download-reel-btn');
+
+    console.log('🔍 Reel box found:', !!reelBox);
+    console.log('🔍 Reel items container found:', !!reelItemsContainer);
+    console.log('🔍 Download button found:', !!downloadBtn);
+
+    if (!reelBox) {
+        console.error('❌ Reel box not found!');
+        return;
+    }
+
+    if (!downloadBtn) {
+        console.error('❌ Download button not found in DOM!');
+    }
+
+    // Track if we're dragging over the reel box
+    reelBox.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        reelBox.classList.add('drag-over');
+    });
+
+    reelBox.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        reelBox.classList.add('drag-over');
+    });
+
+    reelBox.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        if (e.target === reelBox) {
+            reelBox.classList.remove('drag-over');
+        }
+    });
+
+    reelBox.addEventListener('drop', (e) => {
+        console.log('🎬 DROP EVENT FIRED on reel box!');
+        e.preventDefault();
+        reelBox.classList.remove('drag-over');
+
+        // Get the gif data from the dragged element
+        const gifData = e.dataTransfer.getData('application/json');
+        console.log('🎬 Data from drop event:', gifData);
+        if (gifData) {
+            const data = JSON.parse(gifData);
+            console.log('🎬 Parsed data:', data);
+            addToReel(data);
+        } else {
+            console.error('❌ No data in drop event!');
+        }
+    });
+
+    // Download button click handler
+    downloadBtn.addEventListener('click', () => {
+        downloadReelCSV();
+    });
+
+    // Reset button click handler
+    const resetBtn = document.getElementById('reset-reel-btn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            resetGifs();
+        });
+    }
+
+    // Overlay button handlers
+    const copyBtn = document.getElementById('copy-reel-btn');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+            copyReelDataToClipboard();
+        });
+    }
+
+    const closeOverlayBtn = document.getElementById('close-overlay-btn');
+    if (closeOverlayBtn) {
+        closeOverlayBtn.addEventListener('click', () => {
+            hideReelDataOverlay();
+        });
+    }
+
+    // Close overlay when clicking outside
+    const overlay = document.getElementById('reel-data-overlay');
+    if (overlay) {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                hideReelDataOverlay();
+            }
+        });
+    }
+
+    console.log('✅ Reel Builder setup complete');
+}
+
+function resetGifs() {
+    console.log('🔄 Resetting GIF positions and clearing reel...');
+    const container = document.getElementById('gif-container');
+    container.innerHTML = '';
+
+    // Clear the reel data
+    reelItems = [];
+    updateReelUI();
+
+    // Only recreate the GIFs, not the logo (logo keeps bouncing)
+    gifs.forEach(gif => {
+        createGif(gif, container);
+    });
+
+    console.log('✅ GIFs reset and reel cleared');
+}
+
+function addToReel(gifData) {
+    // Check if already in reel
+    const alreadyAdded = reelItems.some(item => item.url === gifData.url);
+    if (alreadyAdded) {
+        console.log('⚠️ Item already in reel:', gifData.name);
+        return;
+    }
+
+    // Add to reel array
+    reelItems.push(gifData);
+    console.log('✅ Added to reel:', gifData.name, '| Total items:', reelItems.length);
+
+    // Update UI
+    updateReelUI();
+}
+
+function removeFromReel(index) {
+    const removed = reelItems.splice(index, 1);
+    console.log('🗑️ Removed from reel:', removed[0].name);
+    updateReelUI();
+}
+
+function updateReelUI() {
+    const reelItemsContainer = document.getElementById('reel-items');
+    const downloadBtn = document.getElementById('download-reel-btn');
+
+    console.log('📋 Updating reel UI, items:', reelItems.length);
+    console.log('📋 Download button found:', !!downloadBtn);
+
+    if (!downloadBtn) {
+        console.error('❌ Download button not found!');
+        return;
+    }
+
+    // Clear current items
+    reelItemsContainer.innerHTML = '';
+
+    // Add each item
+    reelItems.forEach((item, index) => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'reel-item';
+
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'reel-item-name';
+        nameDiv.textContent = item.name || `Item ${index + 1}`;
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'reel-item-remove';
+        removeBtn.textContent = 'REMOVE';
+        removeBtn.addEventListener('click', () => removeFromReel(index));
+
+        itemDiv.appendChild(nameDiv);
+        itemDiv.appendChild(removeBtn);
+        reelItemsContainer.appendChild(itemDiv);
+    });
+
+    // Show/hide download button
+    if (reelItems.length > 0) {
+        downloadBtn.style.display = 'inline-block';
+        console.log('✅ Showing download button');
+    } else {
+        downloadBtn.style.display = 'none';
+        console.log('❌ Hiding download button');
+    }
+}
+
+function downloadReelCSV() {
+    if (reelItems.length === 0) {
+        console.log('⚠️ No items in reel to download');
+        return;
+    }
+
+    const isMobile = window.innerWidth <= 768;
+
+    if (isMobile) {
+        // Show popup overlay for mobile
+        showReelDataOverlay();
+    } else {
+        // Download CSV for desktop
+        downloadCSVFile();
+    }
+}
+
+function showReelDataOverlay() {
+    const overlay = document.getElementById('reel-data-overlay');
+    const textContainer = document.getElementById('reel-data-text');
+
+    // Create formatted text
+    let textContent = '';
+    reelItems.forEach((item, index) => {
+        if (item.link) textContent += `${item.link}\n`;
+        textContent += `${index + 1}. ${item.name || 'Untitled'}\n`;
+        if (item.directedBy) textContent += `   Directed By: ${item.directedBy}\n`;
+        if (item.producedBy) textContent += `   Produced By: ${item.producedBy}\n`;
+        if (item.client) textContent += `   Client: ${item.client}\n`;
+        if (item.year) textContent += `   Year: ${item.year}\n`;
+        textContent += '\n';
+    });
+
+    textContainer.textContent = textContent;
+    overlay.classList.add('show');
+
+    console.log('📱 Showing mobile overlay with', reelItems.length, 'items');
+}
+
+function hideReelDataOverlay() {
+    const overlay = document.getElementById('reel-data-overlay');
+    overlay.classList.remove('show');
+}
+
+function copyReelDataToClipboard() {
+    const textContainer = document.getElementById('reel-data-text');
+    const text = textContainer.textContent;
+
+    // Try modern clipboard API first
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            console.log('📋 Copied to clipboard!');
+            showCopyFeedback();
+        }).catch(err => {
+            console.error('❌ Failed to copy with clipboard API:', err);
+            // Fallback to older method
+            fallbackCopyToClipboard(text);
+        });
+    } else {
+        // Use fallback for older browsers/mobile
+        fallbackCopyToClipboard(text);
+    }
+}
+
+function fallbackCopyToClipboard(text) {
+    // Create a temporary textarea
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.top = '0';
+    textarea.style.left = '0';
+    textarea.style.width = '2em';
+    textarea.style.height = '2em';
+    textarea.style.padding = '0';
+    textarea.style.border = 'none';
+    textarea.style.outline = 'none';
+    textarea.style.boxShadow = 'none';
+    textarea.style.background = 'transparent';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            console.log('📋 Copied to clipboard (fallback method)!');
+            showCopyFeedback();
+        } else {
+            console.error('❌ Failed to copy with fallback method');
+            alert('Failed to copy to clipboard');
+        }
+    } catch (err) {
+        console.error('❌ Error copying:', err);
+        alert('Failed to copy to clipboard');
+    }
+
+    document.body.removeChild(textarea);
+}
+
+function showCopyFeedback() {
+    const copyBtn = document.getElementById('copy-reel-btn');
+    const originalText = copyBtn.textContent;
+    copyBtn.textContent = 'COPIED!';
+    setTimeout(() => {
+        copyBtn.textContent = originalText;
+    }, 2000);
+}
+
+function downloadCSVFile() {
+    // Create CSV content
+    const headers = ['Name', 'Link', 'Directed By', 'Produced By', 'Client', 'Year'];
+    const csvRows = [headers.join(',')];
+
+    reelItems.forEach(item => {
+        const row = [
+            escapeCSV(item.name || ''),
+            escapeCSV(item.link || ''),
+            escapeCSV(item.directedBy || ''),
+            escapeCSV(item.producedBy || ''),
+            escapeCSV(item.client || ''),
+            escapeCSV(item.year || '')
+        ];
+        csvRows.push(row.join(','));
+    });
+
+    const csvContent = csvRows.join('\n');
+
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reel_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+
+    console.log('📥 Downloaded reel CSV with', reelItems.length, 'items');
+}
+
+function escapeCSV(value) {
+    // Escape quotes and wrap in quotes if contains comma, quote, or newline
+    if (typeof value !== 'string') value = String(value);
+    if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+        return '"' + value.replace(/"/g, '""') + '"';
+    }
+    return value;
+}
+
+// Initialize reel builder on page load
+window.addEventListener('load', () => {
+    setupReelBuilder();
 });
