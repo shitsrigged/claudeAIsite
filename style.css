@@ -58,6 +58,8 @@ nav {
     z-index: 1000;
     mix-blend-mode: multiply;
     background: transparent;
+    transform-origin: top right;
+    pointer-events: auto;
 }
 
 /* Mobile styles for video */
@@ -66,15 +68,16 @@ nav {
         display: block !important;
         visibility: visible !important;
         position: fixed !important;
-        top: 50px !important;
-        right: -10px !important;
-        width: 80px !important;
-        max-width: 80px !important;
+        top: 30px !important;
+        right: -20px !important;
+        width: 144px !important;
+        max-width: 144px !important;
         height: auto !important;
         z-index: 1000 !important;
         mix-blend-mode: multiply !important;
         opacity: 1 !important;
         pointer-events: auto !important;
+        transform-origin: center center !important;
     }
 
     nav {
@@ -103,9 +106,10 @@ nav a:hover {
     padding: 5px 10px;
     max-width: 400px;
     display: none;
-    z-index: 999;
+    z-index: 100001;
     top: 60px;
     right: 20px;
+    opacity: 1;
 }
 
 .info-box.active {

@@ -1203,9 +1203,9 @@ window.addEventListener('load', async () => {
     document.addEventListener('keydown', resumeAudio, { once: true });
 });
 
-// Setup video hover functionality
+// Setup video auto-play and switching functionality
 function setupHoverVideo() {
-    console.log('🎥 Setting up hover video...');
+    console.log('🎥 ========== VIDEO SETUP STARTING v2 ==========');
     const video = document.getElementById('hover-video');
 
     if (!video) {
@@ -1214,42 +1214,173 @@ function setupHoverVideo() {
     }
 
     console.log('✅ Video element found:', video);
-    console.log('Video source:', video.querySelector('source')?.src);
-    console.log('Video dimensions:', video.offsetWidth, 'x', video.offsetHeight);
-    console.log('Video position:', window.getComputedStyle(video).position);
-    console.log('Video display:', window.getComputedStyle(video).display);
-    console.log('Video visibility:', window.getComputedStyle(video).visibility);
+    console.log('Video has loop attribute?', video.hasAttribute('loop'));
+    console.log('Video loop property:', video.loop);
 
-    let isPlaying = false;
+    // Force loop to false
+    video.loop = false;
+    console.log('✅ Loop disabled, video.loop is now:', video.loop);
 
-    // Desktop: Play video on mouse enter
-    video.addEventListener('mouseenter', () => {
-        console.log('🖱️ Mouse enter video');
-        video.play();
-        isPlaying = true;
-    });
+    // Array of video sources
+    const videos = [
+        'videos/20251106_2031_01k9e985ttftvr1xz9yztjsra2.mp4',
+        'videos/20251106_2035_01k9e9hz05ea6samye20rq5670.mp4',
+        'videos/Keep_the_entire_202511062021_t0cyu.mp4'
+    ];
 
-    // Desktop: Pause video on mouse leave (stays at current position)
-    video.addEventListener('mouseleave', () => {
-        console.log('🖱️ Mouse leave video');
-        video.pause();
-        isPlaying = false;
-    });
+    let currentVideoIndex = 0;
+    let loopCount = 0;
+    const loopsBeforeSwitch = 1;
+    let hasEnded = false;
 
-    // Mobile: Toggle play/pause on touch
-    video.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        console.log('👆 Touch on video');
-        if (isPlaying) {
-            video.pause();
-            isPlaying = false;
+    // Handle video ended event (when loop completes)
+    video.addEventListener('ended', () => {
+        if (hasEnded) return; // Prevent double-firing
+        hasEnded = true;
+
+        loopCount++;
+        console.log(`✅ Video ${currentVideoIndex + 1} completed loop ${loopCount}/${loopsBeforeSwitch}`);
+
+        if (loopCount >= loopsBeforeSwitch) {
+            // Switch to the other video
+            currentVideoIndex = (currentVideoIndex + 1) % videos.length;
+            loopCount = 0;
+
+            console.log(`🔄 Switching to video ${currentVideoIndex + 1}: ${videos[currentVideoIndex]}`);
+
+            // Change video source
+            const source = video.querySelector('source');
+            source.src = videos[currentVideoIndex];
+
+            // Listen for loadeddata event to ensure video is ready
+            video.addEventListener('loadeddata', function playNewVideo() {
+                console.log('📦 New video loaded, attempting to play...');
+                video.play().then(() => {
+                    hasEnded = false;
+                    console.log('▶️ New video playing successfully');
+                }).catch(err => {
+                    console.error('❌ Failed to play new video:', err);
+                    hasEnded = false;
+                });
+                // Remove this listener after it fires once
+                video.removeEventListener('loadeddata', playNewVideo);
+            }, { once: true });
+
+            video.load();
         } else {
-            video.play();
-            isPlaying = true;
+            // Continue playing same video
+            console.log('▶️ Replaying same video');
+            video.currentTime = 0;
+            video.play().then(() => {
+                hasEnded = false;
+            }).catch(err => {
+                console.error('❌ Failed to replay video:', err);
+                hasEnded = false;
+            });
         }
     });
 
-    console.log('✅ Video event listeners attached');
+    // Autoplay on load
+    video.play().catch(err => {
+        console.log('Autoplay blocked, waiting for user interaction:', err);
+    });
+
+    // Mouse hover to scale video 550% (7.5x total size)
+    let hasScaledUp = false;
+    let canShrink = false;
+
+    // Make sure video is hoverable
+    video.style.pointerEvents = 'auto';
+    console.log('✅ Video pointer-events:', video.style.pointerEvents);
+
+    video.addEventListener('mouseenter', (e) => {
+        console.log('🔍 MOUSEENTER EVENT FIRED!', e);
+        hasScaledUp = true;
+        canShrink = false; // Don't allow shrinking immediately
+        video.style.transformOrigin = 'top right';
+
+        // Different scale for mobile vs desktop
+        const isMobile = window.innerWidth <= 768;
+        if (isMobile) {
+            video.style.transform = 'translate(-120px, 100px) scale(3.75)'; // Smaller and more left for mobile
+            console.log('🔍 Mobile: Video scaled up 275%');
+        } else {
+            video.style.transform = 'translate(250px, -50px) scale(7.5)'; // Desktop
+            console.log('🔍 Desktop: Video scaled up 550%');
+        }
+
+        video.style.transition = 'none'; // Instant scaling
+        video.style.zIndex = '99999'; // Bring to front
+
+        // Allow shrinking after 400ms
+        setTimeout(() => {
+            canShrink = true;
+            console.log('✅ Can now shrink on movement');
+        }, 400);
+    });
+
+    // Scale down immediately on any mouse movement (after delay)
+    video.addEventListener('mousemove', () => {
+        if (hasScaledUp && canShrink) {
+            hasScaledUp = false;
+            canShrink = false;
+            video.style.transform = 'scale(1)';
+            video.style.transition = 'none'; // Instant scaling back
+            video.style.zIndex = '1000'; // Return to original z-index
+            console.log('🔍 Video scaled back to normal on move');
+        }
+    });
+
+    video.addEventListener('mouseleave', () => {
+        hasScaledUp = false;
+        canShrink = false;
+        video.style.transform = 'scale(1)';
+        video.style.transition = 'none'; // Instant scaling back
+        video.style.zIndex = '1000'; // Return to original z-index
+        console.log('🔍 Video scaled back to normal on leave');
+    });
+
+    // Mobile touch support
+    video.addEventListener('touchstart', (e) => {
+        console.log('👆 TOUCHSTART EVENT FIRED!', e);
+        hasScaledUp = true;
+        canShrink = false;
+        video.style.transformOrigin = 'top right';
+        video.style.transform = 'translate(-120px, 100px) scale(3.75)'; // Mobile size
+        video.style.transition = 'none';
+        video.style.zIndex = '99999';
+        console.log('🔍 Mobile touch: Video scaled up 275%');
+
+        // Allow shrinking after 400ms
+        setTimeout(() => {
+            canShrink = true;
+            console.log('✅ Can now shrink on movement');
+        }, 400);
+    }, { passive: true });
+
+    // Mobile touch move to shrink
+    video.addEventListener('touchmove', () => {
+        if (hasScaledUp && canShrink) {
+            hasScaledUp = false;
+            canShrink = false;
+            video.style.transform = 'scale(1)';
+            video.style.transition = 'none';
+            video.style.zIndex = '1000';
+            console.log('🔍 Mobile: Video scaled back on touch move');
+        }
+    }, { passive: true });
+
+    // Mobile touch end
+    video.addEventListener('touchend', () => {
+        hasScaledUp = false;
+        canShrink = false;
+        video.style.transform = 'scale(1)';
+        video.style.transition = 'none';
+        video.style.zIndex = '1000';
+        console.log('🔍 Mobile: Video scaled back on touch end');
+    }, { passive: true });
+
+    console.log('✅ Video autoplay and switching enabled');
 }
 
 // Optionally refresh positions on window resize
