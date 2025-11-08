@@ -66,15 +66,13 @@ nav {
         display: block !important;
         visibility: visible !important;
         position: fixed !important;
-        top: 60px !important;
-        left: 50% !important;
-        right: auto !important;
-        transform: translateX(-50%) !important;
-        width: 100px !important;
-        max-width: 100px !important;
+        top: 50px !important;
+        right: -10px !important;
+        width: 80px !important;
+        max-width: 80px !important;
         height: auto !important;
-        z-index: 99999 !important;
-        mix-blend-mode: normal !important;
+        z-index: 1000 !important;
+        mix-blend-mode: multiply !important;
         opacity: 1 !important;
         pointer-events: auto !important;
     }
