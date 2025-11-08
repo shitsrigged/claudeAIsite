@@ -76,8 +76,6 @@ nav {
         z-index: 99999 !important;
         mix-blend-mode: normal !important;
         opacity: 1 !important;
-        background: red !important;
-        border: 3px solid yellow !important;
         pointer-events: auto !important;
     }
 
